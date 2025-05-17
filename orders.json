@@ -1,0 +1,71 @@
+{"orders": [
+    {
+        "totalAmount": 1375,
+        "orderId": 1,
+        "netAmount": 1250,
+        "paymentId": 1,
+        "customerId": 1,
+        "tax": 125,
+        "orderDate": "2023-03-01",
+        "orderItems": [
+            {
+                "unitPrice": 1200,
+                "odId": 1,
+                "quantity": 1,
+                "productId": 1,
+                "orderId": 3
+            },
+            {
+                "unitPrice": 50,
+                "odId": 2,
+                "quantity": 1,
+                "productId": 2,
+                "orderId": 3
+            }
+        ],
+        "status": "Pending"
+    },
+    {
+        "totalAmount": 440,
+        "orderId": 2,
+        "netAmount": 400,
+        "paymentId": 2,
+        "customerId": 2,
+        "tax": 40,
+        "orderDate": "2023-04-01",
+        "orderItems": [{
+            "unitPrice": 400,
+            "odId": 3,
+            "quantity": 1,
+            "productId": 3,
+            "orderId": 2
+        }],
+        "status": "Pending"
+    },
+    {
+        "totalAmount": 1375,
+        "orderId": 3,
+        "netAmount": 1250,
+        "paymentId": 1,
+        "customerId": 1,
+        "tax": 125,
+        "orderDate": "2023-03-01",
+        "orderItems": [
+            {
+                "unitPrice": 1200,
+                "odId": 1,
+                "quantity": 1,
+                "productId": 1,
+                "orderId": 3
+            },
+            {
+                "unitPrice": 50,
+                "odId": 2,
+                "quantity": 1,
+                "productId": 2,
+                "orderId": 3
+            }
+        ],
+        "status": "Pending"
+    }
+]}

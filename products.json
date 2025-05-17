@@ -1,0 +1,46 @@
+{
+    "components": [{
+        "componentId": 1,
+        "productId": 3,
+        "componentName": "Intel i7-12700K"
+    }],
+    "laptops": [{
+        "productId": 1,
+        "laptopId": 1,
+        "laptopName": "Dell XPS 13"
+    }],
+    "gears": [{
+        "productId": 2,
+        "gearName": "Logitech MX Master",
+        "gearId": 1
+    }],
+    "products": [
+        {
+            "productId": 1,
+            "yearPublish": "2023-01-01T00:00",
+            "price": 1200,
+            "description": "High-end laptop",
+            "stockQuantity": 10,
+            "model": "XPS 13",
+            "brand": "Dell"
+        },
+        {
+            "productId": 2,
+            "yearPublish": "2022-06-01T00:00",
+            "price": 50,
+            "description": "Wireless mouse",
+            "stockQuantity": 20,
+            "model": "MX Master",
+            "brand": "Logitech"
+        },
+        {
+            "productId": 3,
+            "yearPublish": "2021-11-01T00:00",
+            "price": 400,
+            "description": "Powerful CPU",
+            "stockQuantity": 8,
+            "model": "i7-12700K",
+            "brand": "Intel"
+        }
+    ]
+}
