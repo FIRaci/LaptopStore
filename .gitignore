@@ -4,13 +4,28 @@ target/
 !**/src/test/**/target/
 
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
+# .idea/modules.xml
+# .idea/jarRepositories.xml
+# .idea/compiler.xml
+# .idea/libraries/
+/.idea/
+/jre/
 *.iws
 *.iml
 *.ipr
+
+# Ignore output folders and build files
+/out/
+/*.log
+*.exe
+
+# Ignore libraries
+*.jar
+
+# Ignore OS/IDE files
+*.class
+*.iml
+.DS_Store
 
 ### Eclipse ###
 .apt_generated
