@@ -8,20 +8,15 @@ import laptopstore.screen.tablemodel.*;
 import org.jdesktop.swingx.JXDatePicker;
 
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 // import java.text.ParseException; // Có vẻ không được sử dụng trực tiếp
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -158,10 +153,18 @@ public class AdminDashboardScreen {
         alignTableCellsLeft(productTable); // Căn lề trái
         productTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         productTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && productTable.getSelectedRow() != -1) {
-                populateProductForm(productTableModel.getProductAt(productTable.getSelectedRow()));
+            if (!e.getValueIsAdjusting()) {
+                int viewRow = productTable.getSelectedRow();
+                if (viewRow != -1) {
+                    // convert từ view-index → model-index
+                    int modelRow = productTable.convertRowIndexToModel(viewRow);
+                    populateProductForm(
+                            productTableModel.getProductAt(modelRow)
+                    );
+                }
             }
         });
+
         JScrollPane productTableScrollPane = new JScrollPane(productTable);
 
         JPanel productFormPanel = new JPanel(new GridBagLayout());
@@ -294,12 +297,13 @@ public class AdminDashboardScreen {
         }
     }
     private void updateProductAction() {
-        int selectedRow = productTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = productTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select a product to update.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Product selectedProduct = productTableModel.getProductAt(selectedRow);
+        int modelRow = productTable.convertRowIndexToModel(viewRow);
+        Product selectedProduct = productTableModel.getProductAt(modelRow);
 
         try {
             String model = modelField.getText();
@@ -317,7 +321,7 @@ public class AdminDashboardScreen {
 
             Product updatedProduct = new Product(selectedProduct.getProductId(), model, brand, description, BigDecimal.valueOf(price), stock, selectedProduct.getYearPublish());
             ProductDataStore.updateProduct(updatedProduct, type, typeName);
-            productTableModel.updateProduct(selectedRow, updatedProduct);
+            productTableModel.updateProduct(viewRow, updatedProduct);
 
             resetProductForm();
             showAlert("Success", "Product updated successfully.", JOptionPane.INFORMATION_MESSAGE);
@@ -329,19 +333,20 @@ public class AdminDashboardScreen {
         }
     }
     private void deleteProductAction() {
-        int selectedRow = productTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = productTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select a product to delete.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Product productToDelete = productTableModel.getProductAt(selectedRow);
+        int modelRow = productTable.convertRowIndexToModel(viewRow);
+        Product productToDelete = productTableModel.getProductAt(modelRow);
         int confirmation = JOptionPane.showConfirmDialog(frame,
                 "Are you sure you want to delete product: " + productToDelete.getModel() + "?",
                 "Confirm Deletion", JOptionPane.YES_NO_OPTION);
 
         if (confirmation == JOptionPane.YES_OPTION) {
             ProductDataStore.deleteProduct(productToDelete.getProductId());
-            productTableModel.removeProduct(selectedRow);
+            productTableModel.removeProduct(viewRow);
             resetProductForm();
             showAlert("Success", "Product deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }
@@ -372,8 +377,14 @@ public class AdminDashboardScreen {
         alignTableCellsLeft(customerTable); // Căn lề trái
         customerTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         customerTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && customerTable.getSelectedRow() != -1) {
-                populateCustomerForm(customerTableModel.getCustomerAt(customerTable.getSelectedRow()));
+            if (!e.getValueIsAdjusting()) {
+                int viewRow = customerTable.getSelectedRow();
+                if (viewRow != -1) {
+                    int modelRow = customerTable.convertRowIndexToModel(viewRow);
+                    populateCustomerForm(
+                            customerTableModel.getCustomerAt(modelRow)
+                    );
+                }
             }
         });
         JScrollPane customerTableScrollPane = new JScrollPane(customerTable);
@@ -496,12 +507,13 @@ public class AdminDashboardScreen {
         }
     }
     private void updateCustomerAction() {
-        int selectedRow = customerTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = customerTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select a customer to update.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Customer selectedCustomer = customerTableModel.getCustomerAt(selectedRow);
+        int modelRow = customerTable.convertRowIndexToModel(viewRow);
+        Customer selectedCustomer = customerTableModel.getCustomerAt(modelRow);
 
         try {
             String firstName = custFirstNameField.getText();
@@ -525,7 +537,7 @@ public class AdminDashboardScreen {
 
             Customer updatedCustomer = new Customer(selectedCustomer.getCustomerId(), username, email, firstName, lastName, selectedCustomer.getCreatedAt(), gender, address, dateOfBirth, phone);
             CustomerDataStore.updateCustomer(updatedCustomer);
-            customerTableModel.updateCustomer(selectedRow, updatedCustomer);
+            customerTableModel.updateCustomer(viewRow, updatedCustomer);
 
             resetCustomerForm();
             showAlert("Success", "Customer updated successfully.", JOptionPane.INFORMATION_MESSAGE);
@@ -535,19 +547,20 @@ public class AdminDashboardScreen {
         }
     }
     private void deleteCustomerAction() {
-        int selectedRow = customerTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = customerTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select a customer to delete.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Customer customerToDelete = customerTableModel.getCustomerAt(selectedRow);
+        int modelRow = customerTable.convertRowIndexToModel(viewRow);
+        Customer customerToDelete = customerTableModel.getCustomerAt(modelRow);
         int confirmation = JOptionPane.showConfirmDialog(frame,
                 "Are you sure you want to delete customer: " + customerToDelete.getFirstName() + " " + customerToDelete.getLastName() + "?",
                 "Confirm Deletion", JOptionPane.YES_NO_OPTION);
 
         if (confirmation == JOptionPane.YES_OPTION) {
             CustomerDataStore.deleteCustomer(customerToDelete.getCustomerId());
-            customerTableModel.removeCustomer(selectedRow);
+            customerTableModel.removeCustomer(viewRow);
             resetCustomerForm();
             showAlert("Success", "Customer deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }
@@ -578,8 +591,13 @@ public class AdminDashboardScreen {
         alignTableCellsLeft(employeeTable); // Căn lề trái
         employeeTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         employeeTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && employeeTable.getSelectedRow() != -1) {
-                populateEmployeeForm(employeeTableModel.getEmployeeAt(employeeTable.getSelectedRow()));
+            if (!e.getValueIsAdjusting()) {
+                int viewRow = employeeTable.getSelectedRow();
+                if (viewRow != -1) {
+                    int modelRow = employeeTable.convertRowIndexToModel(viewRow);
+                    populateEmployeeForm(
+                            employeeTableModel.getEmployeeAt(modelRow));
+                }
             }
         });
         JScrollPane employeeTableScrollPane = new JScrollPane(employeeTable);
@@ -712,12 +730,13 @@ public class AdminDashboardScreen {
         }
     }
     private void updateEmployeeAction() {
-        int selectedRow = employeeTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = employeeTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select an employee to update.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Employee selectedEmployee = employeeTableModel.getEmployeeAt(selectedRow);
+        int modelRow = productTable.convertRowIndexToModel(viewRow);
+        Employee selectedEmployee = employeeTableModel.getEmployeeAt(modelRow);
 
         try {
             String firstName = empFirstNameField.getText();
@@ -741,7 +760,7 @@ public class AdminDashboardScreen {
 
             Employee updatedEmployee = new Employee(selectedEmployee.getEmployeeId(), firstName, lastName, phone, address, gender, bankNumber, role, salary, workDay, hireDate);
             EmployeeDataStore.updateEmployee(updatedEmployee);
-            employeeTableModel.updateEmployee(selectedRow, updatedEmployee);
+            employeeTableModel.updateEmployee(viewRow, updatedEmployee);
 
             resetEmployeeForm();
             showAlert("Success", "Employee updated successfully.", JOptionPane.INFORMATION_MESSAGE);
@@ -753,19 +772,20 @@ public class AdminDashboardScreen {
         }
     }
     private void deleteEmployeeAction() {
-        int selectedRow = employeeTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = employeeTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select an employee to delete.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Employee employeeToDelete = employeeTableModel.getEmployeeAt(selectedRow);
+        int modelRow = employeeTable.convertRowIndexToModel(viewRow);
+        Employee employeeToDelete = employeeTableModel.getEmployeeAt(modelRow);
         int confirmation = JOptionPane.showConfirmDialog(frame,
                 "Are you sure you want to delete employee: " + employeeToDelete.getFirstName() + " " + employeeToDelete.getLastName() + "?",
                 "Confirm Deletion", JOptionPane.YES_NO_OPTION);
 
         if (confirmation == JOptionPane.YES_OPTION) {
             EmployeeDataStore.deleteEmployee(employeeToDelete.getEmployeeId());
-            employeeTableModel.removeEmployee(selectedRow);
+            employeeTableModel.removeEmployee(viewRow);
             resetEmployeeForm();
             showAlert("Success", "Employee deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }
@@ -799,8 +819,14 @@ public class AdminDashboardScreen {
         alignTableCellsLeft(paymentTable); // Căn lề trái
         paymentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         paymentTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && paymentTable.getSelectedRow() != -1) {
-                populatePaymentForm(paymentTableModel.getPaymentAt(paymentTable.getSelectedRow()));
+            if (!e.getValueIsAdjusting()) {
+                int viewRow = paymentTable.getSelectedRow();
+                if (viewRow != -1) {
+                    int modelRow = paymentTable.convertRowIndexToModel(viewRow);
+                    populatePaymentForm(
+                            paymentTableModel.getPaymentAt(modelRow)
+                    );
+                }
             }
         });
         JScrollPane paymentTableScrollPane = new JScrollPane(paymentTable);
@@ -926,12 +952,13 @@ public class AdminDashboardScreen {
         }
     }
     private void updatePaymentAction() {
-        int selectedRow = paymentTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = paymentTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select a payment to update.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Payment selectedPayment = paymentTableModel.getPaymentAt(selectedRow);
+        int modelRow = paymentTable.convertRowIndexToModel(viewRow);
+        Payment selectedPayment = paymentTableModel.getPaymentAt(modelRow);
         try {
             Employee selectedEmployee = (Employee) paymentEmployeeCombo.getSelectedItem();
             String amountText = paymentAmountField.getText();
@@ -947,7 +974,7 @@ public class AdminDashboardScreen {
 
             Payment updatedPayment = new Payment(selectedPayment.getPaymentId(), selectedEmployee.getEmployeeId(), paymentDateTime, amount, method, status);
             PaymentDataStore.updatePayment(updatedPayment);
-            paymentTableModel.updatePayment(selectedRow, updatedPayment);
+            paymentTableModel.updatePayment(viewRow, updatedPayment);
 
             resetPaymentForm();
             showAlert("Success", "Payment updated successfully.", JOptionPane.INFORMATION_MESSAGE);
@@ -959,19 +986,20 @@ public class AdminDashboardScreen {
         }
     }
     private void deletePaymentAction() {
-        int selectedRow = paymentTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = paymentTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select a payment to delete.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Payment paymentToDelete = paymentTableModel.getPaymentAt(selectedRow);
+        int modelRow = paymentTable.convertRowIndexToModel(viewRow);
+        Payment paymentToDelete = paymentTableModel.getPaymentAt(modelRow);
         int confirmation = JOptionPane.showConfirmDialog(frame,
                 "Are you sure you want to delete payment ID: " + paymentToDelete.getPaymentId() + "?",
                 "Confirm Deletion", JOptionPane.YES_NO_OPTION);
 
         if (confirmation == JOptionPane.YES_OPTION) {
             PaymentDataStore.deletePayment(paymentToDelete.getPaymentId());
-            paymentTableModel.removePayment(selectedRow);
+            paymentTableModel.removePayment(viewRow);
             resetPaymentForm();
             showAlert("Success", "Payment deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }
@@ -1008,25 +1036,26 @@ public class AdminDashboardScreen {
         orderItemTable.setPreferredScrollableViewportSize(new Dimension(orderItemTable.getPreferredScrollableViewportSize().width, 150));
 
         orderTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && orderTable.getSelectedRow() != -1) {
-                Order selectedOrder = orderTableModel.getOrderAt(orderTable.getSelectedRow());
-                populateOrderForm(selectedOrder);
-                if (selectedOrder != null && selectedOrder.getOrderItems() != null) {
-                    orderItemTableModel.setItems(selectedOrder.getOrderItems());
-                } else {
-                    orderItemTableModel.clearItems();
-                }
-                tempOrderItems.clear();
-                if(selectedOrder != null && selectedOrder.getOrderItems() != null) {
-                    // Tạo bản sao của các item để tránh sửa đổi trực tiếp danh sách gốc của order
-                    for(OrderItem item : selectedOrder.getOrderItems()){
-                        tempOrderItems.add(new OrderItem(item.getOdId(), item.getOrderId(), item.getProductId(), item.getQuantity(), item.getUnitPrice()));
+            if (!e.getValueIsAdjusting()) {
+                int viewRow = orderTable.getSelectedRow();
+                if (viewRow >= 0) {
+                    int modelRow = orderTable.convertRowIndexToModel(viewRow);
+                    Order selectedOrder = orderTableModel.getOrderAt(modelRow);
+                    populateOrderForm(selectedOrder);
+
+                    if (selectedOrder.getOrderItems() != null) {
+                        orderItemTableModel.setItems(selectedOrder.getOrderItems());
+                        // clone vào tempOrderItems như cũ…
+                    } else {
+                        orderItemTableModel.clearItems();
+                        tempOrderItems.clear();
                     }
+                } else {
+                    // khi không còn dòng nào được chọn
+                    resetOrderFormFields();
+                    orderItemTableModel.clearItems();
+                    tempOrderItems.clear();
                 }
-            } else {
-                resetOrderFormFields();
-                orderItemTableModel.clearItems();
-                tempOrderItems.clear();
             }
         });
 
@@ -1264,12 +1293,13 @@ public class AdminDashboardScreen {
     }
 
     private void updateSelectedOrderAction() {
-        int selectedRow = orderTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = orderTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select an order to update.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Order selectedOrderInTable = orderTableModel.getOrderAt(selectedRow);
+        int modelRow = orderTable.convertRowIndexToModel(viewRow);
+        Order selectedOrderInTable = orderTableModel.getOrderAt(modelRow);
 
         Customer selectedCustomer = (Customer) orderCustomerCombo.getSelectedItem();
         Payment selectedPayment = (Payment) orderPaymentCombo.getSelectedItem();
@@ -1302,8 +1332,8 @@ public class AdminDashboardScreen {
             OrderDataStore.updateOrder(updatedOrder); // DataStore cần logic để cập nhật hoặc thêm/xóa OrderItems
 
             // Cập nhật lại đối tượng trong TableModel và làm mới bảng
-            orderTableModel.updateOrder(selectedRow, updatedOrder);
-            orderTable.setRowSelectionInterval(selectedRow, selectedRow); // Giữ lựa chọn
+            orderTableModel.updateOrder(viewRow, updatedOrder);
+            orderTable.setRowSelectionInterval(viewRow, viewRow); // Giữ lựa chọn
             orderItemTableModel.setItems(new ArrayList<>(updatedOrder.getOrderItems()));
 
 
@@ -1315,19 +1345,20 @@ public class AdminDashboardScreen {
     }
 
     private void deleteSelectedOrderAction() {
-        int selectedRow = orderTable.getSelectedRow();
-        if (selectedRow == -1) {
+        int viewRow = orderTable.getSelectedRow();
+        if (viewRow == -1) {
             showAlert("Error", "Please select an order to delete.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        Order orderToDelete = orderTableModel.getOrderAt(selectedRow);
+        int modelRow = orderTable.convertRowIndexToModel(viewRow);
+        Order orderToDelete = orderTableModel.getOrderAt(modelRow);
         int confirmation = JOptionPane.showConfirmDialog(frame,
                 "Are you sure you want to delete Order ID: " + orderToDelete.getOrderId() + "?",
                 "Confirm Deletion", JOptionPane.YES_NO_OPTION);
 
         if (confirmation == JOptionPane.YES_OPTION) {
             OrderDataStore.deleteOrder(orderToDelete.getOrderId());
-            orderTableModel.removeOrder(selectedRow);
+            orderTableModel.removeOrder(viewRow);
             resetOrderFormFieldsAndTempItems();
             showAlert("Success", "Order deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }
