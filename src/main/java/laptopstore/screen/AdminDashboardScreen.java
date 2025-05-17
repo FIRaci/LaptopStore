@@ -1045,11 +1045,23 @@ public class AdminDashboardScreen {
 
                     if (selectedOrder.getOrderItems() != null) {
                         orderItemTableModel.setItems(selectedOrder.getOrderItems());
-                        // clone vào tempOrderItems như cũ…
                     } else {
                         orderItemTableModel.clearItems();
-                        tempOrderItems.clear();
                     }
+
+                    tempOrderItems.clear();
+                    if (selectedOrder != null && selectedOrder.getOrderItems() != null) {
+                        for (OrderItem item : selectedOrder.getOrderItems()) {
+                            tempOrderItems.add(new OrderItem(
+                                    item.getOdId(),
+                                    item.getOrderId(),
+                                    item.getProductId(),
+                                    item.getQuantity(),
+                                    item.getUnitPrice()
+                            ));
+                        }
+                    }
+
                 } else {
                     // khi không còn dòng nào được chọn
                     resetOrderFormFields();
@@ -1058,6 +1070,7 @@ public class AdminDashboardScreen {
                 }
             }
         });
+
 
         JScrollPane orderTableScrollPane = new JScrollPane(orderTable);
         JScrollPane orderItemTableScrollPane = new JScrollPane(orderItemTable);
