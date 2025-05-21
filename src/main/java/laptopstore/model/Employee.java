@@ -1,5 +1,6 @@
 package laptopstore.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class Employee {
@@ -8,14 +9,16 @@ public class Employee {
     private String lastName;
     private String phone;
     private String address;
-    private char gender;
+    private char gender; // 'M', 'F', 'O'
     private String bankNumber;
     private String role;
-    private double salary;
+    private BigDecimal salary; // Đã là BigDecimal
     private String workDay;
     private LocalDate hireDay;
+    private String email; // Đã thêm email
 
-    public Employee(int employeeId, String firstName, String lastName, String phone, String address, char gender, String bankNumber, String role, double salary, String workDay, LocalDate hireDay) {
+    // Constructor chính sử dụng BigDecimal
+    public Employee(int employeeId, String firstName, String lastName, String phone, String address, char gender, String bankNumber, String role, BigDecimal salary, String workDay, LocalDate hireDay, String email) {
         this.employeeId = employeeId;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -27,14 +30,23 @@ public class Employee {
         this.salary = salary;
         this.workDay = workDay;
         this.hireDay = hireDay;
+        this.email = email;
+    }
+
+    public Employee() {}
+
+    // Constructor phụ để chuyển từ double (có thể bỏ nếu không dùng nhiều)
+    public Employee(int employeeId, String firstName, String lastName, String phone, String address, char gender, String bankNumber, String role, double salary, String workDay, LocalDate hireDay, String email) {
+        this(employeeId, firstName, lastName, phone, address, gender, bankNumber, role, BigDecimal.valueOf(salary), workDay, hireDay, email);
     }
 
     @Override
     public String toString() {
-        return firstName + " " + lastName + " (" + role + ")";
+        return (firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "") +
+                " (" + (role != null && !role.isEmpty() ? role : "ID: " + employeeId) + ")";
     }
 
-    // Getters and setters
+    // Getters
     public int getEmployeeId() { return employeeId; }
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }
@@ -43,9 +55,12 @@ public class Employee {
     public char getGender() { return gender; }
     public String getBankNumber() { return bankNumber; }
     public String getRole() { return role; }
-    public double getSalary() { return salary; }
+    public BigDecimal getSalary() { return salary; }
     public String getWorkDay() { return workDay; }
     public LocalDate getHireDay() { return hireDay; }
+    public String getEmail() { return email; }
+
+    // Setters
     public void setEmployeeId(int employeeId) { this.employeeId = employeeId; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
@@ -54,11 +69,8 @@ public class Employee {
     public void setGender(char gender) { this.gender = gender; }
     public void setBankNumber(String bankNumber) { this.bankNumber = bankNumber; }
     public void setRole(String role) { this.role = role; }
-    public void setSalary(double salary) { this.salary = salary; }
+    public void setSalary(BigDecimal salary) { this.salary = salary; }
     public void setWorkDay(String workDay) { this.workDay = workDay; }
     public void setHireDay(LocalDate hireDay) { this.hireDay = hireDay; }
-
-    public LocalDate getHireDate() {
-        return hireDay;
-    }
+    public void setEmail(String email) { this.email = email; }
 }
