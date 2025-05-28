@@ -10,7 +10,7 @@ public class Customer {
     private String firstName;
     private String lastName;
     private LocalDateTime createdAt;
-    private char gender;
+    private char gender; // 'M', 'F', hoặc 'O' (Other) - CSDL nên cho phép NULL hoặc có giá trị mặc định
     private String address;
     private LocalDate dateOfBirth;
     private String phone;
@@ -28,12 +28,17 @@ public class Customer {
         this.phone = phone;
     }
 
-    @Override
-    public String toString() {
-        return firstName + " " + lastName + " (" + username + ")";
+    public Customer() {
+        // Constructor rỗng có thể hữu ích
     }
 
-    // Getters and setters
+    @Override
+    public String toString() {
+        return (firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "") +
+                " (" + (username != null && !username.isEmpty() ? username : "ID: " + customerId) + ")";
+    }
+
+    // Getters
     public int getCustomerId() { return customerId; }
     public String getUsername() { return username; }
     public String getEmail() { return email; }
@@ -44,6 +49,8 @@ public class Customer {
     public String getAddress() { return address; }
     public LocalDate getDateOfBirth() { return dateOfBirth; }
     public String getPhone() { return phone; }
+
+    // Setters
     public void setCustomerId(int customerId) { this.customerId = customerId; }
     public void setUsername(String username) { this.username = username; }
     public void setEmail(String email) { this.email = email; }

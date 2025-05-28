@@ -1,0 +1,1116 @@
+-- Tạo user postgres với mật khẩu admin (nếu chưa tồn tại)
+CREATE USER postgres WITH PASSWORD 'admin';
+
+-- Tạo database
+CREATE DATABASE LaptopStore;
+
+-- Cấp quyền
+GRANT ALL PRIVILEGES ON DATABASE LaptopStore TO postgres;
+
+
+-- Xóa các bảng cũ nếu tồn tại (theo thứ tự ngược lại để tránh lỗi khóa ngoại)
+DROP TABLE IF EXISTS ORDER_DETAILS CASCADE;
+DROP TABLE IF EXISTS ORDERS CASCADE;
+DROP TABLE IF EXISTS PAYMENTS CASCADE;
+DROP TABLE IF EXISTS PRODUCTS CASCADE;
+DROP TABLE IF EXISTS EMPLOYEES CASCADE;
+DROP TABLE IF EXISTS CUSTOMERS CASCADE;
+DROP TABLE IF EXISTS categories CASCADE; -- 'categories' viết thường như DDL gốc
+
+-- Bảng CATEGORIES
+CREATE TABLE categories ( -- Viết thường 'categories' để khớp với DDL gốc của bạn nếu CSDL phân biệt chữ hoa/thường
+    category_id SERIAL PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- Bảng CUSTOMERS
+CREATE TABLE CUSTOMERS (
+    customer_id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    gender CHAR(1) CHECK (gender IN ('F', 'M', 'O')),
+    address VARCHAR(255),
+    date_of_birth DATE,
+    phone VARCHAR(20)
+);
+
+-- Bảng EMPLOYEES
+CREATE TABLE EMPLOYEES (
+    employee_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    phone VARCHAR(20) UNIQUE,
+    address VARCHAR(255),
+    gender CHAR(1) CHECK (gender IN ('F', 'M', 'O')),
+    bank_number VARCHAR(20),
+    role VARCHAR(50) NOT NULL,
+    salary NUMERIC(19, 2) NOT NULL,
+    work_day VARCHAR(200),
+    hire_day DATE NOT NULL,
+    email VARCHAR(255) UNIQUE -- Đã thêm cột email
+);
+
+-- Bảng PRODUCTS
+CREATE TABLE PRODUCTS (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    model VARCHAR(100) NOT NULL,
+    brand VARCHAR(100) NOT NULL,
+    description TEXT,
+    price NUMERIC(19, 2) NOT NULL,
+    stock_quantity INT NOT NULL DEFAULT 0,
+    year_publish TIMESTAMP,
+    product_type VARCHAR(50),           -- Đã thêm cột product_type
+    category_id INTEGER,                -- Đã thêm cột category_id
+    CONSTRAINT fk_product_category FOREIGN KEY (category_id)
+        REFERENCES categories (category_id) -- Tham chiếu đến 'categories' viết thường
+        ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Bảng PAYMENTS
+CREATE TABLE PAYMENTS (
+    payment_id SERIAL PRIMARY KEY,
+    employee_id INTEGER,
+    payment_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    payment_method VARCHAR(50) NOT NULL,
+    total_amount NUMERIC(19, 2) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    notes TEXT,                         -- Đã thêm cột notes
+    CONSTRAINT fk_employee_payment FOREIGN KEY (employee_id)
+        REFERENCES EMPLOYEES (employee_id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Bảng ORDERS
+CREATE TABLE ORDERS (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    payment_id INTEGER,
+    order_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    status VARCHAR(50) NOT NULL,
+    net_amount NUMERIC(19, 2) NOT NULL DEFAULT 0.00,
+    tax NUMERIC(19, 2) NOT NULL DEFAULT 0.00,
+    total_amount NUMERIC(19, 2) NOT NULL DEFAULT 0.00,
+    shipping_address VARCHAR(255),      -- Đã thêm cột shipping_address
+    notes TEXT,                         -- Đã thêm cột notes
+    CONSTRAINT fk_customer_order FOREIGN KEY (customer_id)
+        REFERENCES CUSTOMERS (customer_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_payment_order FOREIGN KEY (payment_id)
+        REFERENCES PAYMENTS (payment_id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Bảng ORDER_DETAILS
+CREATE TABLE ORDER_DETAILS (
+    od_id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price NUMERIC(19, 2) NOT NULL, -- Đã thêm cột unit_price
+    CONSTRAINT fk_order_details_order FOREIGN KEY (order_id)
+        REFERENCES ORDERS (order_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_order_details_product FOREIGN KEY (product_id)
+        REFERENCES PRODUCTS (product_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- (Tùy chọn) Tạo INDEX để tăng tốc độ truy vấn thường xuyên
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON PRODUCTS(category_id);
+CREATE INDEX IF NOT EXISTS idx_products_product_type ON PRODUCTS(product_type);
+CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON ORDERS(customer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_id ON ORDERS(payment_id);
+CREATE INDEX IF NOT EXISTS idx_order_details_order_id ON ORDER_DETAILS(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_details_product_id ON ORDER_DETAILS(product_id);
+CREATE INDEX IF NOT EXISTS idx_payments_employee_id ON PAYMENTS(employee_id);
+CREATE INDEX IF NOT EXISTS idx_employees_email ON EMPLOYEES(email);
+CREATE INDEX IF NOT EXISTS idx_customers_email ON CUSTOMERS(email);
+CREATE INDEX IF NOT EXISTS idx_customers_username ON CUSTOMERS(username);
+
+----------------------------------------------------
+-- INSERT DỮ LIỆU MẪU
+----------------------------------------------------
+
+-- Bảng CATEGORIES (Chuyên cho LaptopStore)
+INSERT INTO categories (category_name) VALUES
+('Gaming Laptops'),             -- id 1
+('Business Laptops'),           -- id 2
+('Ultrabooks'),                 -- id 3
+('2-in-1 Laptops'),             -- id 4
+('Student Laptops'),            -- id 5
+('MacBooks'),                   -- id 6
+('Laptop Accessories'),         -- id 7
+('Monitors'),                   -- id 8
+('Laptop Components'),          -- id 9
+('Used & Refurbished Laptops'); -- id 10
+
+-- Bảng CUSTOMERS
+INSERT INTO CUSTOMERS (username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+('john_doe', 'john.doe@example.com', 'John', 'Doe', '2023-01-15 10:00:00', 'M', '123 Main St, Anytown', '1990-05-15', '0901234567'),
+('jane_smith', 'jane.smith@example.com', 'Jane', 'Smith', '2023-02-20 11:30:00', 'F', '456 Oak Ave, Anytown', '1992-08-22', '0902345678'),
+('tech_guru88', 'tech.guru@example.com', 'Alex', 'Chen', '2023-03-10 09:15:00', 'M', '789 Tech Rd, Silicon Valley', '1988-11-30', '0903456789'),
+('gamer_gal', 'gamer.gal@example.com', 'Lisa', 'Nguyen', '2023-04-05 14:00:00', 'F', '101 Byte Dr, Anytown', '1995-02-10', '0904567890'),
+('code_master', 'code.master@example.com', 'Chris', 'Lee', '2023-05-12 16:45:00', 'M', '202 Code Ln, Anytown', '1991-07-07', '0905678901'),
+('design_diva', 'design.diva@example.com', 'Eva', 'Tran', '2023-06-18 08:30:00', 'F', '303 Creative Ct, Anytown', '1993-09-19', '0906789012'),
+('student_sam', 'sam.student@example.com', 'Sam', 'Patel', '2023-07-22 10:20:00', 'M', '404 University Way, Anytown', '2002-01-25', '0907890123'),
+('pro_user', 'pro.user@example.com', 'Grace', 'Hoang', '2023-08-30 13:10:00', 'F', '505 Enterprise Pl, Anytown', '1985-04-03', '0908901234'),
+('budget_ben', 'ben.budget@example.com', 'Ben', 'Kim', '2023-09-14 15:05:00', 'M', '606 Economy Ave, Anytown', '1998-06-12', '0909012345'),
+('creative_kate', 'kate.creative@example.com', 'Kate', 'Phan', '2023-10-25 17:00:00', 'F', '707 Art St, Anytown', '1990-12-01', '0900123456');
+
+-- Bảng EMPLOYEES (Chuyên cho LaptopStore)
+INSERT INTO EMPLOYEES (first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+('Mike', 'Laptop', '0911234501', '100 Tech Avenue', 'M', '111000111', 'Manager', 7500.00, 'Mon-Fri 9-6', '2018-03-15', 'mike.laptop@store.com'),
+('Sarah', 'Connor', '0911234502', '200 Circuit Board Rd', 'F', '222000222', 'Sales Lead', 6000.00, 'Mon-Sat 10-7', '2019-07-01', 'sarah.connor@store.com'),
+('Kevin', 'Mitnick', '0911234503', '300 Hacker Way', 'M', '333000333', 'Technician', 5500.00, 'Mon-Fri 9-5:30, OnCall', '2020-05-20', 'kevin.mitnick@store.com'),
+('Ada', 'Lovelace', '0911234504', '400 Algorithm Alley', 'F', '444000444', 'Sales Rep', 4800.00, 'Tue-Sat 11-8', '2021-06-10', 'ada.lovelace@store.com'),
+('Steve', 'Wozniak', '0911234505', '500 Apple Park', 'M', '555000555', 'Sr Tech', 6200.00, 'Mon-Fri 10-6', '2017-11-01', 'steve.wozniak@store.com'),
+('Grace', 'Hopper', '0911234506', '600 COBOL Corner', 'F', '666000666', 'Sales Rep', 4700.00, 'Mon-Fri 9-5', '2022-02-11', 'grace.hopper@store.com'),
+('Linus', 'Torvalds', '0911234507', '700 Kernel Drive', 'M', '777000777', 'Technician', 5300.00, 'Wed-Sun 10-6', '2020-09-05', 'linus.torvalds@store.com'),
+('Tim', 'Berners-Lee', '0911234508', '800 Web Street', 'M', '888000888', 'Sales Rep', 4900.00, 'Mon-Fri 10-7', '2019-01-20', 'tim.bernerslee@store.com'),
+('Radia', 'Perlman', '0911234509', '900 Spanning Tree Ln', 'F', '999000999', 'Inventory', 4200.00, 'Mon-Fri 8-4', '2021-05-15', 'radia.perlman@store.com'),
+('Alan', 'Turing', '0911234510', '10 Enigma Close', 'M', '000111000', 'Cashier', 3800.00, 'Flexible hours', '2022-08-01', 'alan.turing@store.com');
+
+-- Bảng PRODUCTS (Chuyên cho LaptopStore)
+INSERT INTO PRODUCTS (product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+('XPS 15 9530', '9530', 'Dell', '15-inch performance laptop, Intel Core i7, 16GB RAM, 512GB SSD, NVIDIA RTX 4050', 1899.99, 25, '2023-05-10 00:00:00', 2, 'Laptop'),
+('MacBook Air 13 M2', 'M2', 'Apple', '13.6-inch Retina display, Apple M2 chip, 8GB RAM, 256GB SSD', 1099.00, 40, '2022-07-15 00:00:00', 6, 'Laptop'),
+('ROG Zephyrus G14 GA402XY', 'GA402XY', 'Asus', '14-inch gaming laptop, AMD Ryzen 9, 32GB RAM, 1TB SSD, NVIDIA RTX 4070', 1649.50, 15, '2023-03-01 00:00:00', 1, 'Laptop'),
+('ThinkPad X1 Carbon Gen 11', 'Gen 11', 'Lenovo', '14-inch business ultrabook, Intel Core i5, 16GB RAM, 512GB SSD', 1450.00, 30, '2023-01-20 00:00:00', 2, 'Laptop'),
+('Spectre x360 14 ef2023', 'ef2023', 'HP', '13.5-inch 2-in-1, Intel Core i7, 16GB RAM, 1TB SSD, OLED display', 1599.00, 20, '2023-04-05 00:00:00', 4, 'Laptop'),
+('Swift Go 14 SFG14-71', 'SFG14-71', 'Acer', '14-inch student laptop, AMD Ryzen 5, 8GB RAM, 512GB SSD', 749.99, 50, '2023-02-12 00:00:00', 5, 'Laptop'),
+('Blade 16 RZ09-0484', 'RZ09-0484', 'Razer', '16-inch gaming laptop, Intel Core i9, 32GB RAM, 2TB SSD, NVIDIA RTX 4080', 2999.99, 10, '2023-06-01 00:00:00', 1, 'Laptop'),
+('MX Master 3S Mouse', '910-006556', 'Logitech', 'Advanced wireless mouse for productivity', 99.99, 150, '2022-05-24 00:00:00', 7, 'Accessory'),
+('Dell UltraSharp U2723QE Monitor', 'U2723QE', 'Dell', '27-inch 4K UHD Monitor, USB-C Hub', 579.99, 35, '2022-10-01 00:00:00', 8, 'Monitor'),
+('Surface Laptop 5 13.5', 'RBG-00001', 'Microsoft', '13.5-inch touchscreen laptop, Intel Core i5, 8GB RAM, 256GB SSD', 999.00, 22, '2022-10-12 00:00:00', 3, 'Laptop');
+
+-- Bảng PAYMENTS
+INSERT INTO PAYMENTS (employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(2, '2024-03-01 10:00:00', 'Credit Card', 1958.99, 'Completed', 'Payment for Order #1, Customer John Doe'),
+(4, '2024-03-02 11:15:00', 'PayPal', 1131.97, 'Completed', 'Payment for Order #2, Customer Jane Smith'),
+(6, '2024-03-03 14:30:00', 'Debit Card', 1700.00, 'Completed', 'Payment for Order #3'),
+(8, '2024-03-04 09:00:00', 'Credit Card', 102.99, 'Pending', 'Awaiting confirmation for Order #4'),
+(10, '2024-03-05 16:00:00', 'Bank Transfer', 1500.00, 'Completed', 'Order #5'),
+(2, '2024-03-06 10:30:00', 'PayPal', 772.49, 'Completed', 'Order #6'),
+(4, '2024-03-07 12:00:00', 'Credit Card', 3099.99, 'Failed', 'Payment declined for Order #7'),
+(6, '2024-03-08 17:45:00', 'Debit Card', 597.59, 'Completed', 'Order #8'),
+(8, '2024-03-09 08:20:00', 'Credit Card', 1647.99, 'Completed', 'Order #9'),
+(1, '2024-03-10 13:00:00', 'Cash', 1028.99, 'Completed', 'Payment for Order #10 at store');
+
+-- Bảng ORDERS
+INSERT INTO ORDERS (customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(1, 1, '2024-03-01', 'Delivered', 1780.90, 178.09, 1958.99, '123 Main St, Anytown', 'Fragile item, handle with care.'),
+(2, 2, '2024-03-02', 'Shipped', 1029.06, 102.91, 1131.97, '456 Oak Ave, Anytown', 'Customer requested gift wrap.'),
+(3, 3, '2024-03-03', 'Processing', 1545.45, 154.55, 1700.00, '789 Tech Rd, Silicon Valley', NULL),
+(4, 4, '2024-03-04', 'Pending Payment', 93.63, 9.36, 102.99, '101 Byte Dr, Anytown', 'Awaiting payment clearance.'),
+(5, 5, '2024-03-05', 'Delivered', 1363.64, 136.36, 1500.00, '202 Code Ln, Anytown', NULL),
+(6, 6, '2024-03-06', 'Shipped', 702.26, 70.23, 772.49, '303 Creative Ct, Anytown', 'Leave at front porch if not home.'),
+(7, 7, '2024-03-07', 'Cancelled', 2818.17, 281.82, 3099.99, '404 University Way, Anytown', 'Customer cancelled order.'),
+(8, 8, '2024-03-08', 'Processing', 543.26, 54.33, 597.59, '505 Enterprise Pl, Anytown', NULL),
+(9, 9, '2024-03-09', 'Delivered', 1498.17, 149.82, 1647.99, '606 Economy Ave, Anytown', 'Signature required upon delivery.'),
+(10, 10, '2024-03-10', 'Delivered', 935.45, 93.54, 1028.99, '707 Art St, Anytown', NULL);
+
+-- Bảng ORDER_DETAILS
+-- Đảm bảo các product_id và unit_price tương ứng là chính xác
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 1899.99),  -- XPS 15
+(2, 2, 1, 1099.00),  -- MacBook Air 13 M2
+(2, 8, 1, 99.99),    -- MX Master 3S Mouse
+(3, 3, 1, 1649.50),  -- ROG Zephyrus G14
+(4, 8, 1, 99.99),    -- MX Master 3S Mouse
+(5, 4, 1, 1450.00),  -- ThinkPad X1 Carbon
+(6, 6, 1, 749.99),   -- Swift Go 14
+(7, 7, 1, 2999.99),  -- Blade 16
+(8, 9, 1, 579.99),   -- Dell UltraSharp U2723QE Monitor
+(9, 5, 1, 1599.00),  -- Spectre x360 14
+(10, 10, 1, 999.00); -- Surface Laptop 5
+
+----------------------------------------------------
+-- INSERT THÊM DỮ LIỆU MẪU (PHẦN 2)
+----------------------------------------------------
+
+-- Bảng CATEGORIES (Tiếp tục từ ID 11)
+INSERT INTO categories (category_id, category_name) VALUES
+(11, 'Laptop Bags & Sleeves'),
+(12, 'Docking Stations'),
+(13, 'External Storage (HDD/SSD)'),
+(14, 'Keyboards & Mice (External)'),
+(15, 'Software (OS & Productivity)');
+
+-- Bảng CUSTOMERS (Tiếp tục từ ID 11)
+INSERT INTO CUSTOMERS (customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+(11, 'data_miner_99', 'data.miner@example.net', 'David', 'Miller', '2023-11-01 12:00:00', 'M', '111 Data Dr, BigCity', '1985-03-12', '0901112233'),
+(12, 'cloud_dev_ops', 'cloud.dev@example.org', 'Sophia', 'Garcia', '2023-11-05 14:30:00', 'F', '222 Cloud Ave, Metroville', '1993-07-20', '0902223344'),
+(13, 'network_ninja', 'net.ninja@example.com', 'James', 'Wilson', '2023-11-10 09:45:00', 'M', '333 Router Rd, Techtown', '1990-11-05', '0903334455'),
+(14, 'ai_explorer', 'ai.explore@example.net', 'Olivia', 'Martinez', '2023-11-15 10:15:00', 'F', '444 AI Blvd, Future City', '1998-01-15', '0904445566'),
+(15, 'security_analyst', 'sec.analyst@example.org', 'Liam', 'Anderson', '2023-11-20 16:00:00', 'M', '555 Firewall St, Cybertown', '1982-09-25', '0905556677'),
+(16, 'mobile_maven', 'mobile.maven@example.com', 'Isabella', 'Thomas', '2023-11-25 11:20:00', 'F', '666 App Way, Gadgetville', '1995-05-08', '0906667788'),
+(17, 'vr_pioneer', 'vr.pioneer@example.net', 'Noah', 'Jackson', '2023-12-01 08:50:00', 'M', '777 Virtual Ln, Reality City', '1991-12-12', '0907778899'),
+(18, 'iot_innovator', 'iot.innovator@example.org', 'Ava', 'White', '2023-12-05 13:35:00', 'F', '888 Sensor St, Connectedville', '1989-06-30', '0908889900'),
+(19, 'crypto_king', 'crypto.king@example.com', 'Lucas', 'Harris', '2023-12-10 15:00:00', 'M', '999 Blockchain Ave, Decentral City', '1994-02-18', '0909990011'),
+(20, 'bio_hacker_x', 'bio.hacker@example.net', 'Mia', 'Martin', '2023-12-15 10:00:00', 'F', '1010 Gene Rd, Biotechville', '1997-10-22', '0900001122');
+
+-- Bảng EMPLOYEES (Tiếp tục từ ID 11)
+INSERT INTO EMPLOYEES (employee_id, first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+(11, 'William', 'Davis', '0912345601', '110 Server St', 'M', '121212121', 'Support Tech', 5200.00, 'Mon-Fri 9-6', '2023-01-10', 'william.davis@store.com'),
+(12, 'Emily', 'Rodriguez', '0912345602', '120 Cloud Ave', 'F', '232323232', 'Marketing', 5800.00, 'Mon-Fri 10-7', '2023-02-15', 'emily.rodriguez@store.com'),
+(13, 'Daniel', 'Martinez', '0912345603', '130 Network Rd', 'M', '343434343', 'Sales Rep', 4950.00, 'Tue-Sat 10-7', '2023-03-20', 'daniel.martinez@store.com'),
+(14, 'Chloe', 'Lopez', '0912345604', '140 Security Blvd', 'F', '454545454', 'Technician', 5600.00, 'Mon-Fri 8-5', '2023-04-25', 'chloe.lopez@store.com'),
+(15, 'Ethan', 'Lee', '0912345605', '150 Dev Ops Way', 'M', '565656565', 'Inventory', 4300.00, 'Mon-Fri 9-5', '2023-05-30', 'ethan.lee@store.com');
+
+-- Bảng PRODUCTS (Tiếp tục từ ID 11)
+-- category_id tham chiếu đến categories đã có (1-10) và mới (11-15)
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(11, 'Legion Pro 7i Gen 8', '82WQ002RUS', 'Lenovo', '16-inch Gaming, Intel i9-13900HX, RTX 4080, 32GB RAM, 1TB SSD', 2499.99, 18, '2023-08-15 00:00:00', 1, 'Laptop'),
+(12, 'MacBook Pro 14 M3', 'M3 Pro', 'Apple', '14-inch, Apple M3 Pro chip, 18GB RAM, 512GB SSD, Liquid Retina XDR', 1999.00, 22, '2023-10-30 00:00:00', 6, 'Laptop'),
+(13, 'Dell Latitude 7440', '7440', 'Dell', '14-inch Business Laptop, Intel Core i7-1365U, 16GB RAM, 512GB SSD', 1549.00, 25, '2023-06-20 00:00:00', 2, 'Laptop'),
+(14, 'HP Envy x360 15', '15-ew0023dx', 'HP', '15.6-inch 2-in-1, Intel Core i7, 16GB RAM, 512GB SSD, Touchscreen', 1049.99, 30, '2023-07-01 00:00:00', 4, 'Laptop'),
+(15, 'Acer Aspire 5 Slim', 'A515-45-R74Z', 'Acer', '15.6-inch Student Laptop, AMD Ryzen 5 5500U, 8GB RAM, 256GB SSD', 499.99, 45, '2023-04-10 00:00:00', 5, 'Laptop'),
+(16, 'ProArt Studiobook 16 OLED', 'H7604', 'Asus', '16-inch Creator Laptop, Intel Core i9, 32GB RAM, 1TB SSD, RTX 4070', 2799.50, 12, '2023-09-05 00:00:00', 2, 'Laptop'), -- Business/Creator
+(17, 'Razer Naga V2 Pro', 'RZ01-04400100-R3U1', 'Razer', 'Wireless MMO Gaming Mouse with Swappable Side Plates', 179.99, 60, '2022-11-10 00:00:00', 7, 'Accessory'),
+(18, 'Samsung T7 Shield 2TB SSD', 'MU-PE2T0S/AM', 'Samsung', '2TB Portable SSD, Rugged, USB 3.2 Gen 2', 159.99, 70, '2023-01-15 00:00:00', 13, 'External Storage (HDD/SSD)'),
+(19, 'CalDigit TS4 Dock', 'TS4', 'CalDigit', 'Thunderbolt 4 Docking Station, 18 Ports, 98W Charging', 399.95, 20, '2022-08-01 00:00:00', 12, 'Docking Stations'),
+(20, 'Microsoft Office Home & Business 2021', 'T5D-03518', 'Microsoft', 'One-time purchase for 1 PC or Mac', 249.99, 100, '2021-10-05 00:00:00', 15, 'Software (OS & Productivity)'),
+(21, 'Tomtoc 360 Laptop Sleeve 14"', 'A13-C02D', 'Tomtoc', 'Protective sleeve for 14-inch laptops, CornerArmor', 25.99, 80, '2023-03-01 00:00:00', 11, 'Laptop Bags & Sleeves'),
+(22, 'Keychron K2 Pro Keyboard', 'K2P-H3', 'Keychron', 'QMK/VIA Wireless Custom Mechanical Keyboard', 189.00, 40, '2023-05-20 00:00:00', 14, 'Keyboards & Mice (External)'),
+(23, 'LG UltraGear 27GP850-B', '27GP850-B', 'LG', '27-inch QHD Nano IPS Gaming Monitor, 165Hz, 1ms', 399.99, 28, '2022-06-10 00:00:00', 8, 'Monitors'),
+(24, 'Crucial P5 Plus 1TB NVMe SSD', 'CT1000P5PSSD8', 'Crucial', '1TB PCIe Gen4 NVMe M.2 Internal Gaming SSD', 89.99, 55, '2021-08-17 00:00:00', 9, 'Laptop Components'),
+(25, 'Used Dell XPS 13 (2020)', 'XPS13-9300-U', 'Dell', 'Refurbished, Intel Core i5, 8GB RAM, 256GB SSD, Good Condition', 699.00, 5, '2020-04-01 00:00:00', 10, 'Used & Refurbished Laptops');
+
+-- Dữ liệu cho đơn hàng mới
+-- Order 11: customer_id=11, 1 product (product_id=11, Legion Pro 7i, price 2499.99)
+-- Net: 2499.99, Tax: 250.00, Total: 2749.99
+-- Order 12: customer_id=12, 2 products (product_id=12, MacBook Pro 14, price 1999.00; product_id=18, Samsung T7 SSD, price 159.99)
+-- Net: 1999.00 + 159.99 = 2158.99, Tax: 215.90, Total: 2374.89
+-- Order 13: customer_id=1, 1 product (product_id=20, MS Office, price 249.99)
+-- Net: 249.99, Tax: 25.00, Total: 274.99
+-- Order 14: customer_id=3, 3 products (product_id=21, Tomtoc Sleeve, price 25.99; product_id=22, Keychron K2, price 189.00; product_id=17, Razer Naga, price 179.99)
+-- Net: 25.99 + 189.00 + 179.99 = 394.98, Tax: 39.50, Total: 434.48
+-- Order 15: customer_id=15, 1 product (product_id=25, Used Dell XPS, price 699.00)
+-- Net: 699.00, Tax: 69.90, Total: 768.90
+
+-- Bảng PAYMENTS (Tiếp tục từ ID 11, khớp với các Order mới ở trên)
+INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(11, 3, '2024-03-16 10:00:00', 'Credit Card', 2749.99, 'Completed', 'Order #11 payment'),
+(12, 5, '2024-03-16 11:30:00', 'Bank Transfer', 2374.89, 'Completed', 'Order #12 payment'),
+(13, 7, '2024-03-17 09:15:00', 'PayPal', 274.99, 'Completed', 'Order #13 software purchase'),
+(14, 9, '2024-03-17 14:00:00', 'Credit Card', 434.48, 'Pending', 'Order #14 accessories, verify stock'),
+(15, 11, '2024-03-18 16:45:00', 'Debit Card', 768.90, 'Completed', 'Order #15 refurbished unit');
+
+-- Bảng ORDERS (Tiếp tục từ ID 11)
+INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(11, 11, 11, '2024-03-16', 'Processing', 2499.99, 250.00, 2749.99, '111 Data Dr, BigCity', 'High value gaming laptop, confirm address by phone.'),
+(12, 12, 12, '2024-03-16', 'Shipped', 2158.99, 215.90, 2374.89, '222 Cloud Ave, Metroville', 'Includes MacBook and external SSD.'),
+(13, 1, 13, '2024-03-17', 'Delivered', 249.99, 25.00, 274.99, '123 Main St, Anytown', 'Software license key sent via email.'),
+(14, 3, 14, '2024-03-17', 'Awaiting Stock', 394.98, 39.50, 434.48, '789 Tech Rd, Silicon Valley', 'Keyboard K2 Pro on backorder.'),
+(15, 15, 15, '2024-03-18', 'Processing', 699.00, 69.90, 768.90, '555 Firewall St, Cybertown', 'Refurbished unit, final check before shipping.');
+
+-- Bảng ORDER_DETAILS (Tiếp tục od_id, order_id tham chiếu đến các Order mới)
+-- od_id sẽ tự tăng, không cần chỉ định
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+-- Order 11
+(11, 11, 1, 2499.99), -- Legion Pro 7i
+-- Order 12
+(12, 12, 1, 1999.00), -- MacBook Pro 14 M3
+(12, 18, 1, 159.99),  -- Samsung T7 Shield 2TB SSD
+-- Order 13
+(13, 20, 1, 249.99), -- Microsoft Office
+-- Order 14
+(14, 21, 1, 25.99),  -- Tomtoc Laptop Sleeve
+(14, 22, 1, 189.00), -- Keychron K2 Pro
+(14, 17, 1, 179.99), -- Razer Naga V2 Pro
+-- Order 15
+(15, 25, 1, 699.00); -- Used Dell XPS 13
+
+INSERT INTO CUSTOMERS (customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+(21, 'quantum_leap', 'quantum.leap@example.io', 'Alice', 'Wonder', '2023-12-20 09:30:00', 'F', '1212 Rabbit Hole, Wonderland', '1999-07-14', '0901010101'),
+(22, 'digital_nomad_7', 'nomad.seven@example.com', 'Bob', 'The Builder', '2023-12-22 11:00:00', 'M', '343 Mobile Office, Worldwide', '1980-11-23', '0902020202'),
+(23, 'ethical_hacker_pro', 'ethical.pro@example.org', 'Charlie', 'Brown', '2023-12-25 14:15:00', 'M', '565 Secure Zone, Netville', '1992-04-01', '0903030303'),
+(24, 'green_tech_advocate', 'green.advocate@example.io', 'Diana', 'Prince', '2023-12-28 10:45:00', 'F', '787 Eco Park, Sustain City', '1988-08-08', '0904040404'),
+(25, 'space_explorer_x', 'space.x@example.com', 'Elon', 'Muskrat', '2024-01-02 16:20:00', 'M', '909 Mars Colony, Solar System', '1971-06-28', '0905050505'),
+(26, 'retro_gamer_8bit', 'retro.8bit@example.org', 'Fiona', 'Appleby', '2024-01-05 08:00:00', 'F', '121 Joystick Ln, Pixelville', '1986-05-19', '0906060606'),
+(27, 'data_viz_expert', 'dataviz.expert@example.io', 'George', 'Jetson', '2024-01-08 13:00:00', 'M', '343 Chart Ct, Infographic City', '1995-09-09', '0907070707'),
+(28, 'ux_ui_artist', 'uxui.artist@example.com', 'Hannah', 'Montana', '2024-01-10 17:30:00', 'F', '565 Design Studio, Creative Hub', '2000-02-20', '0908080808'),
+(29, 'cloud_architect_prime', 'cloudarch.prime@example.org', 'Ian', 'Somers', '2024-01-12 09:00:00', 'M', '787 Server Farm, Datacenter Row', '1983-03-03', '0909090909'),
+(30, 'ml_engineer_pro', 'ml.engineer@example.io', 'Julia', 'Roberts', '2024-01-15 11:45:00', 'F', '909 Algorithm Rd, AI Valley', '1990-10-10', '0910101010');
+
+INSERT INTO EMPLOYEES (employee_id, first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+(16, 'Olivia', 'Chen', '0912345606', '160 AI Street', 'F', '676767676', 'Data Analyst', 6100.00, 'Mon-Fri 9-5:30', '2023-06-05', 'olivia.chen@store.com'),
+(17, 'James', 'Kim', '0912345607', '170 VR Avenue', 'M', '787878787', 'Sales Manager', 7800.00, 'Mon-Fri 9-6', '2023-07-10', 'james.kim@store.com'),
+(18, 'Sophia', 'Patel', '0912345608', '180 IoT Lane', 'F', '898989898', 'Customer Service', 4500.00, 'Mon-Sat 10-7', '2023-08-15', 'sophia.patel@store.com'),
+(19, 'Benjamin', 'Wright', '0912345609', '190 Blockchain Rd', 'M', '909090909', 'Technician', 5400.00, 'Tue-Sat 11-8', '2023-09-20', 'benjamin.wright@store.com'),
+(20, 'Mia', 'Scott', '0912345610', '200 Biotech Circle', 'F', '010101010', 'Sales Rep', 4850.00, 'Wed-Sun 10-6', '2023-10-25', 'mia.scott@store.com');
+
+-- Bảng PRODUCTS (Tiếp tục từ ID 26)
+-- Sử dụng category_id từ 1-15
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(26, 'Alienware m16 R2', 'AWm16R2', 'Alienware', '16-inch QHD+ 240Hz Gaming Laptop, Intel Core Ultra 7, RTX 4070, 16GB RAM, 1TB SSD', 2199.99, 15, '2023-08-15 00:00:00', 1, 'Laptop'),
+(27, 'HP Dragonfly Pro Chromebook', 'DragonflyProCB', 'HP', '14-inch 1200p Touchscreen Chromebook, Intel Core i5, 16GB RAM, 256GB SSD', 999.00, 20, '2023-07-01 00:00:00', 3, 'Laptop'),
+(28, 'Lenovo Yoga 7i 16 (2024)', 'Yoga7i-16IML9', 'Lenovo', '16-inch 2-in-1 Laptop, Intel Core Ultra 5, 16GB RAM, 512GB SSD, Touchscreen', 899.99, 25, '2023-07-01 00:00:00', 4, 'Laptop'),
+(29, 'ASUS Vivobook Go 15 OLED', 'E1504FA', 'Asus', '15.6-inch OLED Student Laptop, AMD Ryzen 5 7520U, 8GB RAM, 512GB SSD', 549.00, 30, '2023-04-10 00:00:00', 5, 'Laptop'),
+(30, 'Apple Mac mini M2', 'MNH73LL/A', 'Apple', 'Desktop Computer, Apple M2 chip, 8GB RAM, 256GB SSD', 599.00, 18, '2023-10-30 00:00:00', 6, 'Desktop'),
+(31, 'Anker 737 Power Bank (PowerCore 24K)', 'A1289', 'Anker', '24,000mAh Portable Charger, 140W Output, Smart Digital Display', 149.99, 50, '2023-03-01 00:00:00', 7, 'Accessory'),
+(32, 'Samsung Odyssey G9 49" Monitor', 'LS49CG954SNXZA', 'Samsung', '49-inch Dual QHD Curved Gaming Monitor, 240Hz, 1ms', 1299.99, 10, '2022-06-10 00:00:00', 8, 'Monitor'),
+(33, 'Corsair Vengeance LPX 32GB RAM', 'CMK32GX4M2E3200C16', 'Corsair', '32GB (2x16GB) DDR4 3200MHz C16 Desktop Memory Kit', 69.99, 40, '2021-08-17 00:00:00', 9, 'Laptop Components'),
+(34, 'Logitech K380 Multi-Device Bluetooth Keyboard', '920-009599', 'Logitech', 'Slim, multi-device wireless keyboard for Mac, Windows, ChromeOS, Android, iOS', 39.99, 75, '2023-05-20 00:00:00', 14, 'Keyboards & Mice (External)'),
+(35, 'Windows 11 Pro OEM', 'FQC-10529', 'Microsoft', 'Windows 11 Professional 64-bit OEM DVD', 149.00, 30, '2021-10-05 00:00:00', 15, 'Software (OS & Productivity)'),
+(36, 'Thule Gauntlet MacBook Sleeve 16"', '3204523', 'Thule', 'Rugged protective sleeve for 16-inch MacBook Pro', 59.95, 25, '2023-03-01 00:00:00', 11, 'Laptop Bags & Sleeves'),
+(37, 'WD Black SN850X 2TB NVMe SSD', 'WDS200T2X0E', 'Western Digital', '2TB NVMe Internal Gaming SSD Gen4 PCIe, M.2 2280, Up to 7,300 MB/s', 149.99, 33, '2021-08-17 00:00:00', 9, 'Laptop Components'),
+(38, 'Refurbished HP EliteBook 840 G8', 'Elite840G8-R', 'HP', '14-inch Business Laptop, Intel Core i5, 16GB RAM, 256GB SSD, Grade A', 749.00, 8, '2020-04-01 00:00:00', 10, 'Used & Refurbished Laptops'),
+(39, 'Belkin Thunderbolt 3 Dock Core', 'F4U110bt', 'Belkin', 'Thunderbolt 3 and USB-C Docking Station, 7 Ports, 4K HDMI', 169.99, 15, '2022-08-01 00:00:00', 12, 'Docking Stations'),
+(40, 'LaCie Rugged Mini 4TB External HDD', 'LAC9000633', 'LaCie', '4TB USB 3.0 External Hard Drive, Shock, Drop, Crush and Rain Resistant', 149.99, 22, '2023-01-15 00:00:00', 13, 'External Storage (HDD/SSD)');
+
+INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(16, 16, '2024-03-20 10:30:00', 'Credit Card', 2419.99, 'Completed', 'Order #16, Alienware laptop'),
+(17, 18, '2024-03-20 12:00:00', 'PayPal', 1263.89, 'Completed', 'Order #17, HP Chromebook + Powerbank'),
+(18, 20, '2024-03-21 09:45:00', 'Debit Card', 658.90, 'Completed', 'Order #18, Mac mini'),
+(19, 1, '2024-03-21 15:15:00', 'Credit Card', 406.97, 'Processing', 'Order #19, PC Peripherals'),
+(20, 3, '2024-03-22 11:00:00', 'Bank Transfer', 1429.99, 'Completed', 'Order #20, Samsung G9 Monitor'),
+(21, 5, '2024-03-23 10:00:00', 'Credit Card', 163.90, 'Completed', 'Order #21, Windows 11 Pro Key'),
+(22, 7, '2024-03-23 14:30:00', 'PayPal', 2264.85, 'Completed', 'Order #22, MacBook Pro M3 + Sleeve'),
+(23, 9, '2024-03-24 09:00:00', 'Debit Card', 823.90, 'Completed', 'Order #23, Refurbished EliteBook'),
+(24, 17, '2024-03-24 16:20:00', 'Credit Card', 516.98, 'Pending', 'Order #24, Monitor + RAM, stock check'),
+(25, 19, '2024-03-25 10:50:00', 'Bank Transfer', 186.99, 'Completed', 'Order #25, Belkin Dock');
+
+INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(16, 21, 16, '2024-03-20', 'Shipped', 2199.99, 220.00, 2419.99, '1212 Rabbit Hole, Wonderland', 'Express shipping requested.'),
+(17, 22, 17, '2024-03-20', 'Delivered', 1148.99, 114.90, 1263.89, '343 Mobile Office, Worldwide', 'Leave with concierge if available.'),
+(18, 5, 18, '2024-03-21', 'Processing', 599.00, 59.90, 658.90, '202 Code Ln, Anytown', 'Customer pickup at store.'),
+(19, 13, 19, '2024-03-21', 'Awaiting Payment', 369.97, 37.00, 406.97, '333 Router Rd, Techtown', 'Payment link sent to customer.'),
+(20, 25, 20, '2024-03-22', 'Shipped', 1299.99, 130.00, 1429.99, '909 Mars Colony, Solar System', 'Special handling for large monitor.'),
+(21, 2, 21, '2024-03-23', 'Delivered', 149.00, 14.90, 163.90, '456 Oak Ave, Anytown', 'Digital product, license key only.'),
+(22, 30, 22, '2024-03-23', 'Processing', 2058.95, 205.90, 2264.85, '909 Algorithm Rd, AI Valley', 'Verify billing and shipping match.'),
+(23, 18, 23, '2024-03-24', 'Shipped', 749.00, 74.90, 823.90, '888 Sensor St, Connectedville', 'Refurbished item, warranty details included.'),
+(24, 27, 24, '2024-03-24', 'Pending Stock', 469.98, 47.00, 516.98, '343 Chart Ct, Infographic City', 'RAM module expected in 2 days.'),
+(25, 8, 25, '2024-03-25', 'Delivered', 169.99, 17.00, 186.99, '505 Enterprise Pl, Anytown', NULL);
+
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+-- Order 16
+(16, 26, 1, 2199.99), -- Alienware m16 R2
+-- Order 17
+(17, 27, 1, 999.00),  -- HP Dragonfly Pro Chromebook
+(17, 31, 1, 149.99),  -- Anker 737 Power Bank
+-- Order 18
+(18, 30, 1, 599.00),  -- Apple Mac mini M2
+-- Order 19
+(19, 34, 1, 39.99),   -- Logitech K380 Keyboard
+(19, 37, 1, 149.99),  -- WD Black SN850X 2TB SSD
+(19, 17, 1, 179.99),  -- Razer Naga V2 Pro (ID từ lô trước)
+-- Order 20
+(20, 32, 1, 1299.99), -- Samsung Odyssey G9 Monitor
+-- Order 21
+(21, 35, 1, 149.00),  -- Windows 11 Pro OEM
+-- Order 22
+(22, 12, 1, 1999.00), -- MacBook Pro 14 M3 (ID từ lô trước)
+(22, 36, 1, 59.95),   -- Thule Gauntlet Sleeve
+-- Order 23
+(23, 38, 1, 749.00),  -- Refurbished HP EliteBook
+-- Order 24
+(24, 23, 1, 399.99),  -- LG UltraGear Monitor
+(24, 33, 1, 69.99),   -- Corsair Vengeance RAM
+-- Order 25
+(25, 39, 1, 169.99); -- Belkin Thunderbolt 3 Dock Core
+
+----------------------------------------------------
+-- INSERT THÊM DỮ LIỆU MẪU (PHẦN 4)
+----------------------------------------------------
+
+-- Bảng CUSTOMERS (Tiếp tục từ ID 31)
+INSERT INTO CUSTOMERS (customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+(31, 'dev_ops_guru', 'devops.guru@example.tech', 'Olivia', 'Davis', '2024-01-18 10:00:00', 'F', '101 Pipeline Rd, Automation City', '1993-05-21', '0911122233'),
+(32, 'frontend_wiz', 'frontend.wiz@example.io', 'Noah', 'Garcia', '2024-01-20 11:30:00', 'M', '202 UI Ave, Design Town', '1995-08-12', '0912233344'),
+(33, 'backend_master', 'backend.master@example.com', 'Ava', 'Rodriguez', '2024-01-22 09:15:00', 'F', '303 API Blvd, Logicville', '1990-11-28', '0913344455'),
+(34, 'fullstack_dev', 'fullstack.dev@example.tech', 'Liam', 'Wilson', '2024-01-25 14:00:00', 'M', '404 Stack St, Codeville', '1988-02-10', '0914455566'),
+(35, 'mobile_app_pro', 'mobile.pro@example.io', 'Isabella', 'Martinez', '2024-01-28 16:45:00', 'F', '505 Swift Ln, Appburg', '1996-07-07', '0915566677'),
+(36, 'game_dev_star', 'gamedev.star@example.com', 'Mason', 'Anderson', '2024-02-01 08:30:00', 'M', '606 Unity Dr, Game City', '1991-09-19', '0916677788'),
+(37, 'data_scientist_ai', 'datasci.ai@example.tech', 'Sophia', 'Thomas', '2024-02-05 10:20:00', 'F', '707 Model Ave, Predict Town', '1994-01-25', '0917788899'),
+(38, 'cybersec_expert', 'cybersec.expert@example.io', 'Jacob', 'Jackson', '2024-02-08 13:10:00', 'M', '808 Shield Rd, Secureville', '1985-04-03', '0918899900'),
+(39, 'cloud_solutions_arch', 'cloudarch.sol@example.com', 'Mia', 'White', '2024-02-12 15:05:00', 'F', '909 Cluster St, Scale City', '1992-06-12', '0919900011'),
+(40, 'blockchain_innovator', 'blockchain.innov@example.tech', 'Ethan', 'Harris', '2024-02-15 17:00:00', 'M', '1010 Ledger Ln, Crypto Town', '1997-12-01', '0910011122'),
+(41, 'ar_vr_developer', 'arvr.dev@example.io', 'Chloe', 'Martin', '2024-02-18 09:45:00', 'F', '1111 Reality Rd, Virtual World', '1998-03-15', '0921122233'),
+(42, 'iot_specialist_hub', 'iot.hub@example.com', 'Alexander', 'Thompson', '2024-02-20 11:15:00', 'M', '1212 Sensor Ave, Connected Hub', '1989-05-28', '0922233344'),
+(43, 'robotics_engineer_pro', 'robotics.pro@example.tech', 'Ella', 'Garcia', '2024-02-22 14:30:00', 'F', '1313 Bot St, Mech City', '1994-08-02', '0923344455'),
+(44, 'bio_informatician', 'bioinfo@example.io', 'William', 'Davis', '2024-02-25 10:00:00', 'M', '1414 Genome Ln, Bio Town', '1987-10-11', '0924455566'),
+(45, 'tech_writer_guru', 'techwriter.guru@example.com', 'Grace', 'Miller', '2024-02-28 16:00:00', 'F', '1515 Doc Rd, Content City', '1991-12-25', '0925566677');
+
+-- Bảng EMPLOYEES (Tiếp tục từ ID 21)
+INSERT INTO EMPLOYEES (employee_id, first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+(21, 'Lucas', 'Brown', '0913456701', '210 Mainframe Blvd', 'M', '101010101A', 'Senior Technician', 6500.00, 'Mon-Fri 9-6, OnCall', '2023-11-01', 'lucas.brown@store.com'),
+(22, 'Ava', 'Jones', '0913456702', '220 Component Way', 'F', '202020202B', 'Sales Associate', 4600.00, 'Tue-Sat 10-7', '2023-11-10', 'ava.jones@store.com'),
+(23, 'Jackson', 'Garcia', '0913456703', '230 Peripherals Rd', 'M', '303030303C', 'Inventory Clerk', 4100.00, 'Mon-Fri 8-4:30', '2023-11-20', 'jackson.garcia@store.com'),
+(24, 'Isabella', 'Miller', '0913456704', '240 Software Suite', 'F', '404040404D', 'Customer Support Lead', 5300.00, 'Mon-Fri 9-5', '2023-12-01', 'isabella.miller@store.com'),
+(25, 'Aiden', 'Davis', '0913456705', '250 Hardware Hub', 'M', '505050505E', 'Technician', 5250.00, 'Wed-Sun 11-8', '2023-12-10', 'aiden.davis@store.com'),
+(26, 'Harper', 'Rodriguez', '0913456706', '260 Network Nook', 'F', '606060606F', 'Sales Rep', 4750.00, 'Mon-Fri 10-6', '2024-01-05', 'harper.rodriguez@store.com'),
+(27, 'Elijah', 'Wilson', '0913456707', '270 Security Central', 'M', '707070707G', 'IT Support', 5000.00, 'Mon-Fri 8:30-5', '2024-01-15', 'elijah.wilson@store.com'),
+(28, 'Evelyn', 'Martinez', '0913456708', '280 Cloud Corner', 'F', '808080808H', 'Marketing Specialist', 5900.00, 'Mon-Fri 9-5', '2024-01-25', 'evelyn.martinez@store.com'),
+(29, 'Logan', 'Anderson', '0913456709', '290 Data Drive', 'M', '909090909I', 'Junior Technician', 4800.00, 'Tue-Sat 9-6', '2024-02-05', 'logan.anderson@store.com'),
+(30, 'Abigail', 'Thomas', '0913456710', '300 App Avenue', 'F', '000000000J', 'Store Assistant', 3900.00, 'Flexible, Part-time', '2024-02-15', 'abigail.thomas@store.com');
+
+-- Bảng PRODUCTS (Tiếp tục từ ID 41)
+-- Sử dụng category_id từ 1-15 (đã có 15 categories)
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(41, 'ASUS ROG Strix Scar 18', 'G834JY', 'Asus', '18-inch Nebula HDR Gaming Laptop, Intel Core i9-14900HX, RTX 4090, 32GB RAM, 2TB SSD', 3899.99, 12, '2024-01-10 00:00:00', 1, 'Laptop'),
+(42, 'Microsoft Surface Laptop Studio 2', 'Studio2-i7-32-1TB-4050', 'Microsoft', '14.4-inch PixelSense Flow Touchscreen, Intel Core i7-13700H, 32GB RAM, 1TB SSD, RTX 4050', 2799.99, 18, '2023-10-03 00:00:00', 4, 'Laptop'), -- 2-in-1 / Creator
+(43, 'Lenovo ThinkBook 16 Gen 6', '21KHA000US', 'Lenovo', '16-inch Business Laptop, AMD Ryzen 7 7730U, 16GB RAM, 512GB SSD', 849.00, 30, '2023-09-15 00:00:00', 2, 'Laptop'),
+(44, 'Acer Chromebook Spin 714', 'CP714-2WN-54PK', 'Acer', '14-inch 2-in-1 Chromebook, Intel Core i5-1335U, 8GB RAM, 256GB SSD, Touchscreen', 699.99, 25, '2023-07-20 00:00:00', 4, 'Laptop'), -- 2-in-1 / Chromebook
+(45, 'Apple iMac 24 M3', 'MQRJ3LL/A', 'Apple', '24-inch 4.5K Retina display, Apple M3 chip, 8GB RAM, 256GB SSD, Blue', 1299.00, 20, '2023-10-30 00:00:00', 6, 'Desktop'), -- Mac Desktop
+(46, 'Logitech MX Keys S Combo', '920-011599', 'Logitech', 'MX Keys S Keyboard and MX Master 3S Mouse Combo, Graphite', 199.99, 40, '2023-05-30 00:00:00', 14, 'Keyboards & Mice (External)'),
+(47, 'BenQ PD2705U DesignVue Monitor', 'PD2705U', 'BenQ', '27-inch 4K UHD IPS Monitor for Designers, USB-C, AQCOLOR', 549.99, 15, '2022-11-01 00:00:00', 8, 'Monitors'),
+(48, 'Samsung 990 PRO 2TB NVMe SSD', 'MZ-V9P2T0BW', 'Samsung', '2TB PCIe Gen4 NVMe M.2 Internal Gaming SSD, Up to 7,450 MB/s', 169.99, 35, '2022-10-20 00:00:00', 9, 'Laptop Components'),
+(49, 'Adobe Creative Cloud All Apps (1 Year)', 'AdobeCC-1Yr', 'Adobe', '1-Year Subscription to all Adobe Creative Cloud apps', 599.88, 50, '2024-01-01 00:00:00', 15, 'Software (OS & Productivity)'),
+(50, 'Peak Design Everyday Backpack 20L', 'BEDB-20-BK-2', 'Peak Design', 'Versatile camera and everyday backpack, Black', 279.95, 22, '2021-05-01 00:00:00', 11, 'Laptop Bags & Sleeves'),
+(51, 'Used MacBook Pro 16 (2021 M1 Pro)', 'MBP16M1P-R', 'Apple', 'Refurbished, 16-inch, M1 Pro, 16GB RAM, 512GB SSD, Space Gray, Excellent', 1799.00, 7, '2021-10-18 00:00:00', 10, 'Used & Refurbished Laptops'),
+(52, 'OWC Thunderbolt Hub', 'OWCTB4HUB5P', 'OWC', 'Thunderbolt Hub, 4 Thunderbolt 4 Ports, 1 USB-A Port, 60W Charging', 179.00, 18, '2023-02-10 00:00:00', 12, 'Docking Stations'),
+(53, 'SanDisk Extreme Portable SSD 2TB V2', 'SDSSDE61-2T00-G25', 'SanDisk', '2TB USB-C 3.2 Gen 2 Portable SSD, Up to 1050MB/s Read Speed', 149.99, 30, '2021-09-01 00:00:00', 13, 'External Storage (HDD/SSD)'),
+(54, 'Razer Huntsman V3 Pro Keyboard', 'RZ03-04970200-R3M1', 'Razer', 'Analog Optical Gaming Keyboard with Rapid Trigger Mode', 249.99, 28, '2023-10-12 00:00:00', 14, 'Keyboards & Mice (External)'),
+(55, 'Dell Premier Sleeve 14', 'PE1420V', 'Dell', 'Protective sleeve for 14-inch Dell laptops, Eco-friendly', 34.99, 45, '2020-01-15 00:00:00', 11, 'Laptop Bags & Sleeves');
+
+-- Dữ liệu cho đơn hàng mới (tiếp tục từ Order ID 26)
+-- Order 26: customer_id=31, 1 product (product_id=41, ASUS ROG Strix Scar 18, price 3899.99)
+-- Net: 3899.99, Tax: 390.00, Total: 4289.99
+-- Order 27: customer_id=32, 2 products (product_id=42, Surface Laptop Studio 2, price 2799.99; product_id=46, MX Keys S Combo, price 199.99)
+-- Net: 2799.99 + 199.99 = 2999.98, Tax: 300.00, Total: 3299.98
+-- Order 28: customer_id=10, 1 product (product_id=45, Apple iMac 24 M3, price 1299.00)
+-- Net: 1299.00, Tax: 129.90, Total: 1428.90
+-- Order 29: customer_id=35, 3 products (product_id=49, Adobe CC, price 599.88; product_id=50, Peak Design Backpack, price 279.95; product_id=53, SanDisk SSD, price 149.99)
+-- Net: 599.88 + 279.95 + 149.99 = 1029.82, Tax: 102.98, Total: 1132.80
+-- Order 30: customer_id=40, 1 product (product_id=51, Used MacBook Pro 16, price 1799.00)
+-- Net: 1799.00, Tax: 179.90, Total: 1978.90
+-- Order 31: customer_id=3, 1 product (product_id=47, BenQ Monitor, price 549.99)
+-- Net: 549.99, Tax: 55.00, Total: 604.99
+-- Order 32: customer_id=42, 2 products (product_id=28, Lenovo Yoga 7i, price 899.99; product_id=52, OWC Hub, price 179.00)
+-- Net: 899.99 + 179.00 = 1078.99, Tax: 107.90, Total: 1186.89
+-- Order 33: customer_id=20, 1 product (product_id=54, Razer Huntsman V3, price 249.99)
+-- Net: 249.99, Tax: 25.00, Total: 274.99
+-- Order 34: customer_id=38, 2 products (product_id=43, ThinkBook 16, price 849.00; product_id=48, Samsung 990 PRO 2TB, price 169.99)
+-- Net: 849.00 + 169.99 = 1018.99, Tax: 101.90, Total: 1120.89
+-- Order 35: customer_id=15, 1 product (product_id=55, Dell Premier Sleeve, price 34.99)
+-- Net: 34.99, Tax: 3.50, Total: 38.49
+
+-- Bảng PAYMENTS (Tiếp tục từ ID 26, khớp với các Order mới ở trên)
+INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(26, 21, '2024-03-26 10:00:00', 'Credit Card', 4289.99, 'Completed', 'Order #26, High-end ASUS Gaming Laptop'),
+(27, 23, '2024-03-26 11:45:00', 'Bank Transfer', 3299.98, 'Completed', 'Order #27, Surface Studio 2 + MX Combo'),
+(28, 25, '2024-03-27 09:30:00', 'PayPal', 1428.90, 'Completed', 'Order #28, iMac M3'),
+(29, 2, '2024-03-27 14:20:00', 'Credit Card', 1132.80, 'Processing', 'Order #29, Software and accessories, fraud check'),
+(30, 4, '2024-03-28 10:10:00', 'Debit Card', 1978.90, 'Completed', 'Order #30, Used MacBook Pro 16'),
+(31, 6, '2024-03-29 11:00:00', 'Credit Card', 604.99, 'Completed', 'Order #31, BenQ Designer Monitor'),
+(32, 8, '2024-03-29 15:00:00', 'PayPal', 1186.89, 'Completed', 'Order #32, Lenovo Yoga + OWC Hub'),
+(33, 20, '2024-03-30 09:00:00', 'Debit Card', 274.99, 'Completed', 'Order #33, Razer Keyboard'),
+(34, 22, '2024-03-30 16:30:00', 'Credit Card', 1120.89, 'Pending', 'Order #34, ThinkBook + SSD, partial shipment possible'),
+(35, 24, '2024-03-31 10:00:00', 'Bank Transfer', 38.49, 'Completed', 'Order #35, Dell Sleeve');
+
+-- Bảng ORDERS (Tiếp tục từ ID 26)
+INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(26, 31, 26, '2024-03-26', 'Processing', 3899.99, 390.00, 4289.99, '101 Pipeline Rd, Automation City', 'Insured shipping required.'),
+(27, 32, 27, '2024-03-26', 'Shipped', 2999.98, 300.00, 3299.98, '202 UI Ave, Design Town', 'Contains multiple items.'),
+(28, 10, 28, '2024-03-27', 'Delivered', 1299.00, 129.90, 1428.90, '707 Art St, Anytown', 'Customer confirmed receipt.'),
+(29, 35, 29, '2024-03-27', 'Awaiting Payment Confirmation', 1029.82, 102.98, 1132.80, '505 Swift Ln, Appburg', 'Payment under review.'),
+(30, 40, 30, '2024-03-28', 'Processing', 1799.00, 179.90, 1978.90, '1010 Ledger Ln, Crypto Town', 'Refurbished item, 7-day return policy explained.'),
+(31, 3, 31, '2024-03-29', 'Shipped', 549.99, 55.00, 604.99, '789 Tech Rd, Silicon Valley', 'Monitor calibration report included.'),
+(32, 42, 32, '2024-03-29', 'Delivered', 1078.99, 107.90, 1186.89, '1212 Sensor Ave, Connected Hub', NULL),
+(33, 20, 33, '2024-03-30', 'Processing', 249.99, 25.00, 274.99, '200 Biotech Circle', 'New customer, first order.'),
+(34, 38, 34, '2024-03-30', 'Pending Stock Availability', 1018.99, 101.90, 1120.89, '808 Shield Rd, Secureville', 'SSD backordered, ETA 3 days.'),
+(35, 15, 35, '2024-03-31', 'Shipped', 34.99, 3.50, 38.49, '555 Firewall St, Cybertown', 'Small parcel, standard shipping.');
+
+-- Bảng ORDER_DETAILS (Tiếp tục od_id, order_id tham chiếu đến các Order mới)
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+-- Order 26
+(26, 41, 1, 3899.99), -- ASUS ROG Strix Scar 18
+-- Order 27
+(27, 42, 1, 2799.99), -- Microsoft Surface Laptop Studio 2
+(27, 46, 1, 199.99),  -- Logitech MX Keys S Combo
+-- Order 28
+(28, 45, 1, 1299.00), -- Apple iMac 24 M3
+-- Order 29
+(29, 49, 1, 599.88),  -- Adobe Creative Cloud All Apps
+(29, 50, 1, 279.95),  -- Peak Design Everyday Backpack
+(29, 53, 1, 149.99),  -- SanDisk Extreme Portable SSD 2TB V2
+-- Order 30
+(30, 51, 1, 1799.00), -- Used MacBook Pro 16 (2021 M1 Pro)
+-- Order 31
+(31, 47, 1, 549.99),  -- BenQ PD2705U DesignVue Monitor
+-- Order 32
+(32, 28, 1, 899.99),  -- Lenovo Yoga 7i 16 (ID từ lô trước)
+(32, 52, 1, 179.00),  -- OWC Thunderbolt Hub
+-- Order 33
+(33, 54, 1, 249.99),  -- Razer Huntsman V3 Pro Keyboard
+-- Order 34
+(34, 43, 1, 849.00),  -- Lenovo ThinkBook 16 Gen 6
+(34, 48, 1, 169.99),  -- Samsung 990 PRO 2TB NVMe SSD
+-- Order 35
+(35, 55, 1, 34.99);   -- Dell Premier Sleeve 14
+
+
+----------------------------------------------------
+-- INSERT THÊM DỮ LIỆU MẪU (PHẦN 5)
+----------------------------------------------------
+
+-- Bảng CUSTOMERS (Tiếp tục từ ID 46)
+INSERT INTO CUSTOMERS (customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+(46, 'music_producer_x', 'music.prod@example.live', 'Kevin', 'Barnes', '2024-03-01 09:00:00', 'M', '1616 Beat St, Harmony City', '1984-06-18', '0926677788'),
+(47, 'film_director_pro', 'film.dir@example.media', 'Sofia', 'Coppola', '2024-03-02 10:30:00', 'F', '1717 Set Ave, Cinema Town', '1971-05-14', '0927788899'),
+(48, 'fashion_designer_chic', 'fashion.chic@example.style', 'Tom', 'Ford', '2024-03-03 11:45:00', 'M', '1818 Runway Rd, Vogue Ville', '1961-08-27', '0928899900'),
+(49, 'architect_visionary', 'arch.vision@example.build', 'Zaha', 'Hadid', '2024-03-04 14:00:00', 'F', '1919 Blueprint Blvd, Structure City', '1950-10-31', '0929900011'),
+(50, 'chef_gourmet_king', 'chef.gourmet@example.food', 'Gordon', 'Ramsay', '2024-03-05 15:15:00', 'M', '2020 Michelin St, Flavor Town', '1966-11-08', '0930011122'),
+(51, 'travel_blogger_adv', 'travel.adv@example.world', 'Samantha', 'Brown', '2024-03-06 09:30:00', 'F', '2121 Globe Trotter Ave, Wanderlust City', '1970-03-31', '0931122233'),
+(52, 'fitness_coach_pro', 'fitness.pro@example.fit', 'Chris', 'Hemsworth', '2024-03-07 10:45:00', 'M', '2222 Muscle Beach, Flex Ville', '1983-08-11', '0932233344'),
+(53, 'eco_warrior_green', 'eco.green@example.earth', 'Greta', 'Thunberg', '2024-03-08 11:50:00', 'F', '2323 Planet St, Sustain Ville', '2003-01-03', '0933344455'),
+(54, 'podcast_host_voice', 'podcast.voice@example.fm', 'Joe', 'Rogan', '2024-03-09 13:00:00', 'M', '2424 Mic Ave, Broadcast City', '1967-08-11', '0934455566'),
+(55, 'esports_champ_gg', 'esports.gg@example.game', 'Sasha', 'Hostyn', '2024-03-10 14:30:00', 'F', '2525 Victory Lane, Pro Gamer Town', '1993-12-18', '0935566677');
+
+-- Bảng EMPLOYEES (Tiếp tục từ ID 31)
+INSERT INTO EMPLOYEES (employee_id, first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+(31, 'Charlotte', 'Martinez', '0914567801', '310 Pixel Plaza', 'F', 'K111111111', 'Graphic Designer', 5800.00, 'Mon-Fri 9-5:30', '2024-02-20', 'charlotte.martinez@store.com'),
+(32, 'Henry', 'Young', '0914567802', '320 Vector Way', 'M', 'L222222222', 'Marketing Coordinator', 5300.00, 'Mon-Fri 9:30-6', '2024-03-01', 'henry.young@store.com'),
+(33, 'Amelia', 'King', '0914567803', '330 Code Street', 'F', 'M333333333', 'Junior Developer', 5100.00, 'Mon-Fri 10-6:30', '2024-03-10', 'amelia.king@store.com'),
+(34, 'Theodore', 'Scott', '0914567804', '340 Network Drive', 'M', 'N444444444', 'System Administrator', 6800.00, 'Mon-Fri 9-5, OnCall', '2024-03-15', 'theodore.scott@store.com'),
+(35, 'Penelope', 'Green', '0914567805', '350 Support Hub', 'F', 'O555555555', 'Technical Support', 4900.00, 'Rotating Shifts', '2024-03-25', 'penelope.green@store.com');
+
+-- Bảng PRODUCTS (Tiếp tục từ ID 56)
+-- Sử dụng category_id từ 1-15
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(56, 'Framework Laptop 13 (DIY Edition)', 'FWL13-DIY-AMD7040', 'Framework', '13.5-inch Modular Laptop, AMD Ryzen 7 7840U, User-Upgradeable Components, No RAM/Storage/OS', 999.00, 15, '2023-08-01 00:00:00', 9, 'Laptop'), -- Components/DIY
+(57, 'LG Gram Style 14 (2024)', '14Z90RS-K.ADS9U1', 'LG', '14-inch Ultra-Lightweight Laptop, Intel Core Ultra 7, 16GB RAM, 1TB SSD, Iridescent Finish', 1499.99, 20, '2024-02-01 00:00:00', 3, 'Laptop'), -- Ultrabook
+(58, 'Razer DeathAdder V3 Pro Mouse', 'RZ01-04630100-R3U1', 'Razer', 'Ultra-lightweight Wireless Ergonomic Esports Mouse, Focus Pro 30K Optical Sensor', 149.99, 40, '2022-08-11 00:00:00', 7, 'Accessory'),
+(59, 'Sony WH-1000XM5 Headphones', 'WH1000XM5/B', 'Sony', 'Industry Leading Noise Canceling Wireless Headphones, Black', 348.00, 30, '2022-05-12 00:00:00', 7, 'Accessory'),
+(60, 'Elgato Stream Deck MK.2', '10GBA9901', 'Elgato', 'Studio Controller, 15 Macro Keys, Trigger Actions in Apps and Software', 149.99, 25, '2021-07-15 00:00:00', 7, 'Accessory'),
+(61, 'Noctua NH-D15 CPU Cooler', 'NH-D15 chromax.black', 'Noctua', 'Premium CPU Cooler with 2x NF-A15 PWM 140mm Fans (Black)', 109.95, 18, '2019-10-29 00:00:00', 9, 'Laptop Components'), -- Desktop component, but common for enthusiasts
+(62, 'Used Lenovo ThinkPad T14 Gen 3 (AMD)', 'T14G3AMD-R', 'Lenovo', 'Refurbished 14-inch Business Laptop, AMD Ryzen 5 PRO, 16GB RAM, 512GB SSD', 899.00, 10, '2022-07-01 00:00:00', 10, 'Used & Refurbished Laptops'),
+(63, 'Satechi USB-C Multiport Adapter 8K with Ethernet V3', 'ST-UCMXAM', 'Satechi', 'USB-C Hub with 8K HDMI, Ethernet, USB-A, SD Card Readers, Pass-Through Charging', 99.99, 22, '2023-06-01 00:00:00', 12, 'Docking Stations'),
+(64, 'Seagate FireCuda 530 2TB NVMe SSD with Heatsink', 'ZP2000GM3A023', 'Seagate', '2TB NVMe Internal SSD Gen4 PCIe, M.2 2280, Up to 7,300 MB/s, with Heatsink', 179.99, 28, '2021-07-29 00:00:00', 9, 'Laptop Components'),
+(65, 'Microsoft Sculpt Ergonomic Desktop Keyboard & Mouse', 'L5V-00001', 'Microsoft', 'Ergonomic Keyboard, Mouse, and Number Pad Set for Comfort', 129.95, 33, '2013-08-20 00:00:00', 14, 'Keyboards & Mice (External)');
+
+-- Dữ liệu cho đơn hàng mới (tiếp tục từ Order ID 36)
+-- Order 36: customer_id=46, 1 product (product_id=56, Framework Laptop 13, price 999.00)
+-- Net: 999.00, Tax: 99.90, Total: 1098.90
+-- Order 37: customer_id=47, 2 products (product_id=57, LG Gram Style 14, price 1499.99; product_id=59, Sony WH-1000XM5, price 348.00)
+-- Net: 1499.99 + 348.00 = 1847.99, Tax: 184.80, Total: 2032.79
+-- Order 38: customer_id=25, 1 product (product_id=60, Elgato Stream Deck, price 149.99)
+-- Net: 149.99, Tax: 15.00, Total: 164.99
+-- Order 39: customer_id=50, 2 products (product_id=61, Noctua NH-D15, price 109.95; product_id=64, Seagate FireCuda 2TB, price 179.99)
+-- Net: 109.95 + 179.99 = 289.94, Tax: 28.99, Total: 318.93
+-- Order 40: customer_id=53, 1 product (product_id=62, Used ThinkPad T14, price 899.00)
+-- Net: 899.00, Tax: 89.90, Total: 988.90
+-- Order 41: customer_id=1, 1 product (product_id=65, Microsoft Sculpt Desktop, price 129.95)
+-- Net: 129.95, Tax: 13.00, Total: 142.95
+-- Order 42: customer_id=55, 2 products (product_id=58, Razer DeathAdder V3, price 149.99; product_id=63, Satechi Adapter, price 99.99)
+-- Net: 149.99 + 99.99 = 249.98, Tax: 25.00, Total: 274.98
+
+-- Bảng PAYMENTS (Tiếp tục từ ID 36, khớp với các Order mới ở trên)
+INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(36, 31, '2024-04-01 09:15:00', 'Credit Card', 1098.90, 'Completed', 'Order #36, Framework Laptop DIY'),
+(37, 33, '2024-04-01 10:50:00', 'PayPal', 2032.79, 'Completed', 'Order #37, LG Gram + Sony Headphones'),
+(38, 35, '2024-04-02 11:30:00', 'Debit Card', 164.99, 'Completed', 'Order #38, Stream Deck'),
+(39, 10, '2024-04-02 14:00:00', 'Credit Card', 318.93, 'Processing', 'Order #39, PC Components, high value'),
+(40, 12, '2024-04-03 09:00:00', 'Bank Transfer', 988.90, 'Completed', 'Order #40, Used ThinkPad T14'),
+(41, 14, '2024-04-04 10:20:00', 'Credit Card', 142.95, 'Completed', 'Order #41, Ergonomic Desktop Set'),
+(42, 16, '2024-04-04 15:00:00', 'PayPal', 274.98, 'Completed', 'Order #42, Razer Mouse + Satechi Hub');
+
+-- Bảng ORDERS (Tiếp tục từ ID 36)
+INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(36, 46, 36, '2024-04-01', 'Shipped', 999.00, 99.90, 1098.90, '1616 Beat St, Harmony City', 'DIY kit, all parts included.'),
+(37, 47, 37, '2024-04-01', 'Processing', 1847.99, 184.80, 2032.79, '1717 Set Ave, Cinema Town', 'Customer requested discrete packaging.'),
+(38, 25, 38, '2024-04-02', 'Delivered', 149.99, 15.00, 164.99, '909 Mars Colony, Solar System', 'Left at designated drop-off point.'),
+(39, 50, 39, '2024-04-02', 'Awaiting Payment Confirmation', 289.94, 28.99, 318.93, '2020 Michelin St, Flavor Town', 'Bank transfer pending clearance.'),
+(40, 53, 40, '2024-04-03', 'Shipped', 899.00, 89.90, 988.90, '2323 Planet St, Sustain Ville', 'Refurbished, includes 90-day warranty.'),
+(41, 1, 41, '2024-04-04', 'Delivered', 129.95, 13.00, 142.95, '123 Main St, Anytown', 'Customer repeat purchase.'),
+(42, 55, 42, '2024-04-04', 'Processing', 249.98, 25.00, 274.98, '2525 Victory Lane, Pro Gamer Town', 'Verify compatibility of hub with customer setup.');
+
+-- Bảng ORDER_DETAILS (Tiếp tục od_id, order_id tham chiếu đến các Order mới)
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+-- Order 36
+(36, 56, 1, 999.00),  -- Framework Laptop 13
+-- Order 37
+(37, 57, 1, 1499.99), -- LG Gram Style 14
+(37, 59, 1, 348.00),  -- Sony WH-1000XM5 Headphones
+-- Order 38
+(38, 60, 1, 149.99),  -- Elgato Stream Deck MK.2
+-- Order 39
+(39, 61, 1, 109.95),  -- Noctua NH-D15 CPU Cooler
+(39, 64, 1, 179.99),  -- Seagate FireCuda 530 2TB
+-- Order 40
+(40, 62, 1, 899.00),  -- Used Lenovo ThinkPad T14
+-- Order 41
+(41, 65, 1, 129.95),  -- Microsoft Sculpt Ergonomic Desktop
+-- Order 42
+(42, 58, 1, 149.99),  -- Razer DeathAdder V3 Pro Mouse
+(42, 63, 1, 99.99);   -- Satechi USB-C Multiport Adapter
+
+----------------------------------------------------
+-- INSERT THÊM DỮ LIỆU MẪU (PHẦN 6)
+----------------------------------------------------
+
+-- Bảng CUSTOMERS (Tiếp tục từ ID 56)
+INSERT INTO CUSTOMERS (customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+(56, 'vr_enthusiast_pro', 'vr.pro@example.xyz', 'Ethan', 'Hunt', '2024-03-11 09:15:00', 'M', '2626 Virtual Ave, Meta City', '1994-01-20', '0936677788'),
+(57, 'ai_researcher_lab', 'ai.lab@example.dev', 'Chloe', 'Price', '2024-03-12 10:30:00', 'F', '2727 Neural Net Rd, DeepLearn Ville', '1998-07-07', '0937788899'),
+(58, 'iot_developer_smart', 'iot.smart@example.tech', 'Lucas', 'Scott', '2024-03-13 11:45:00', 'M', '2828 Sensor St, SmartHome Town', '1989-12-12', '0938899900'),
+(59, 'blockchain_expert_coin', 'blockchain.coin@example.org', 'Mia', 'King', '2024-03-14 14:00:00', 'F', '2929 Crypto Ln, Token City', '1991-03-25', '0939900011'),
+(60, 'robotics_guru_mech', 'robotics.mech@example.net', 'Noah', 'Green', '2024-03-15 15:15:00', 'M', '3030 Robot Ave, MechWorld', '1987-09-05', '0940011122'),
+(61, 'sustainable_living_adv', 'sustainable.life@example.info', 'Olivia', 'Adams', '2024-03-16 09:30:00', 'F', '3131 Eco Way, Green Valley', '1995-05-18', '0941122233'),
+(62, 'adventure_traveler_exp', 'adventure.exp@example.com', 'Liam', 'Baker', '2024-03-17 10:45:00', 'M', '3232 Explorer Rd, Wanderlust Realm', '1982-11-30', '0942233344'),
+(63, 'home_chef_extra', 'home.chef@example.food', 'Ava', 'Nelson', '2024-03-18 11:50:00', 'F', '3333 Kitchen St, Culinary Corner', '1990-02-14', '0943344455'),
+(64, 'diy_crafter_maker', 'diy.maker@example.craft', 'James', 'Carter', '2024-03-19 13:00:00', 'M', '3434 Workshop Ave, Handmade City', '1978-06-22', '0944455566'),
+(65, 'pet_lover_care', 'pet.care@example.vet', 'Sophia', 'Hill', '2024-03-20 14:30:00', 'F', '3535 Paw Print Ln, Animal Kingdom', '1996-10-01', '0945566677');
+
+-- Bảng EMPLOYEES (Tiếp tục từ ID 36)
+INSERT INTO EMPLOYEES (employee_id, first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+(36, 'Isabelle', 'Rossi', '0915678901', '360 Design District', 'F', 'P666666666', 'UI/UX Designer', 6200.00, 'Mon-Fri 10-6:30', '2024-04-01', 'isabelle.rossi@store.com'),
+(37, 'Owen', 'Murphy', '0915678902', '370 Logistics Lane', 'M', 'Q777777777', 'Warehouse Manager', 5500.00, 'Mon-Fri 8-5', '2024-04-08', 'owen.murphy@store.com'),
+(38, 'Zoey', 'Simmons', '0915678903', '380 Content Corner', 'F', 'R888888888', 'Content Creator', 5000.00, 'Mon-Fri 9:30-6', '2024-04-15', 'zoey.simmons@store.com'),
+(39, 'Caleb', 'Rivera', '0915678904', '390 Network Hub', 'M', 'S999999999', 'Network Engineer', 7200.00, 'Mon-Fri 9-5, OnCall', '2024-04-22', 'caleb.rivera@store.com'),
+(40, 'Stella', 'Cooper', '0915678905', '400 Service Center', 'F', 'T000000000', 'Lead Technician', 6800.00, 'Mon-Sat 9-6', '2024-04-29', 'stella.cooper@store.com');
+
+-- Bảng PRODUCTS (Tiếp tục từ ID 66)
+-- Sử dụng category_id từ 1-15
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(66, 'ASUS Zenbook S 13 OLED (2024)', 'UX5304MA', 'Asus', '13.3-inch Ultra-Portable OLED Laptop, Intel Core Ultra 7, 16GB RAM, 1TB SSD, Basalt Gray', 1399.99, 25, '2024-03-01 00:00:00', 3, 'Laptop'),
+(67, 'Dell XPS 17 (9730)', 'XPS9730-7308SLV-PUS', 'Dell', '17-inch Creator Laptop, Intel Core i7-13700H, 32GB RAM, 1TB SSD, NVIDIA RTX 4060', 2599.99, 15, '2023-05-15 00:00:00', 2, 'Laptop'),
+(68, 'Logitech G Pro X Superlight 2 Mouse', '910-006630', 'Logitech G', 'Next-gen Lightweight Wireless Gaming Mouse, LIGHTFORCE Hybrid Switches, HERO 2 Sensor', 159.00, 50, '2023-09-05 00:00:00', 7, 'Accessory'),
+(69, 'Bose QuietComfort Ultra Headphones', '880063-0100', 'Bose', 'Premium Noise Cancelling Wireless Headphones with Immersive Audio, Black', 429.00, 28, '2023-09-14 00:00:00', 7, 'Accessory'),
+(70, 'GoPro HERO12 Black', 'CHDHX-121-CN', 'GoPro', 'Waterproof Action Camera with 5.3K60 Ultra HD Video, HyperSmooth 6.0', 399.99, 30, '2023-09-06 00:00:00', 7, 'Accessory'), -- Action Cam, but fits accessories
+(71, 'AMD Ryzen 9 7950X3D CPU', '100-100000908WOF', 'AMD', '16-Core, 32-Thread Unlocked Desktop Processor with 3D V-Cache Technology', 699.00, 12, '2023-02-28 00:00:00', 9, 'Laptop Components'), -- Desktop CPU
+(72, 'Refurbished Apple MacBook Air M1 (2020)', 'MGN63LL/A-R', 'Apple', 'Refurbished 13.3-inch, M1 Chip, 8GB RAM, 256GB SSD, Space Gray, Certified', 799.00, 18, '2020-11-10 00:00:00', 10, 'Used & Refurbished Laptops'),
+(73, 'Anker PowerExpand Elite 13-in-1 Thunderbolt 3 Dock', 'A8396', 'Anker', '13-in-1 Docking Station, 85W Charging for Laptop, Dual Monitor Display, 4K HDMI', 299.99, 20, '2020-08-01 00:00:00', 12, 'Docking Stations'),
+(74, 'Kingston FURY Renegade 4TB NVMe SSD', 'SFYRD/4000G', 'Kingston', '4TB PCIe Gen4 NVMe M.2 Internal Gaming SSD, Up to 7,300MB/s Read', 299.99, 25, '2022-05-10 00:00:00', 9, 'Laptop Components'),
+(75, 'SteelSeries Apex Pro TKL (2023) Keyboard', '64856', 'SteelSeries', 'Adjustable Actuation Esports Keyboard, OmniPoint 2.0 Switches, TKL Form Factor', 189.99, 30, '2022-10-04 00:00:00', 14, 'Keyboards & Mice (External)');
+
+-- Dữ liệu cho đơn hàng mới (tiếp tục từ Order ID 43)
+-- Order 43: customer_id=56, 1 product (product_id=66, ASUS Zenbook S 13, price 1399.99)
+-- Net: 1399.99, Tax: 140.00, Total: 1539.99
+-- Order 44: customer_id=57, 2 products (product_id=67, Dell XPS 17, price 2599.99; product_id=69, Bose QC Ultra, price 429.00)
+-- Net: 2599.99 + 429.00 = 3028.99, Tax: 302.90, Total: 3331.89
+-- Order 45: customer_id=30, 1 product (product_id=70, GoPro HERO12, price 399.99)
+-- Net: 399.99, Tax: 40.00, Total: 439.99
+-- Order 46: customer_id=60, 2 products (product_id=71, AMD Ryzen 9 7950X3D, price 699.00; product_id=61, Noctua NH-D15, price 109.95)
+-- Net: 699.00 + 109.95 = 808.95, Tax: 80.90, Total: 889.85
+-- Order 47: customer_id=63, 1 product (product_id=72, Used MacBook Air M1, price 799.00)
+-- Net: 799.00, Tax: 79.90, Total: 878.90
+-- Order 48: customer_id=5, 1 product (product_id=75, SteelSeries Apex Pro TKL, price 189.99)
+-- Net: 189.99, Tax: 19.00, Total: 208.99
+-- Order 49: customer_id=65, 2 products (product_id=68, Logitech G Pro X Superlight 2, price 159.00; product_id=73, Anker PowerExpand Elite Dock, price 299.99)
+-- Net: 159.00 + 299.99 = 458.99, Tax: 45.90, Total: 504.89
+
+-- Bảng PAYMENTS (Tiếp tục từ ID 43, khớp với các Order mới ở trên)
+INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(43, 36, '2024-04-05 09:00:00', 'Credit Card', 1539.99, 'Completed', 'Order #43, ASUS Zenbook S 13 OLED'),
+(44, 38, '2024-04-05 10:30:00', 'Bank Transfer', 3331.89, 'Completed', 'Order #44, Dell XPS 17 + Bose Headphones'),
+(45, 40, '2024-04-06 11:15:00', 'PayPal', 439.99, 'Completed', 'Order #45, GoPro HERO12 Black'),
+(46, 15, '2024-04-06 14:45:00', 'Credit Card', 889.85, 'Processing', 'Order #46, High-performance CPU and Cooler'),
+(47, 17, '2024-04-07 09:30:00', 'Debit Card', 878.90, 'Completed', 'Order #47, Refurbished MacBook Air M1'),
+(48, 19, '2024-04-08 10:00:00', 'Credit Card', 208.99, 'Completed', 'Order #48, SteelSeries Gaming Keyboard'),
+(49, 21, '2024-04-08 15:20:00', 'PayPal', 504.89, 'Completed', 'Order #49, Logitech Mouse + Anker Dock');
+
+-- Bảng ORDERS (Tiếp tục từ ID 43)
+INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(43, 56, 43, '2024-04-05', 'Shipped', 1399.99, 140.00, 1539.99, '2626 Virtual Ave, Meta City', 'Signature required for delivery.'),
+(44, 57, 44, '2024-04-05', 'Processing', 3028.99, 302.90, 3331.89, '2727 Neural Net Rd, DeepLearn Ville', 'Customer requested expedited processing if possible.'),
+(45, 30, 45, '2024-04-06', 'Delivered', 399.99, 40.00, 439.99, '909 Mars Colony, Solar System', 'Package left with building security as per instruction.'),
+(46, 60, 46, '2024-04-06', 'Awaiting Payment Confirmation', 808.95, 80.90, 889.85, '3030 Robot Ave, MechWorld', 'Payment under bank review, hold shipment.'),
+(47, 63, 47, '2024-04-07', 'Shipped', 799.00, 79.90, 878.90, '3333 Kitchen St, Culinary Corner', 'Refurbished item, all accessories included.'),
+(48, 5, 48, '2024-04-08', 'Delivered', 189.99, 19.00, 208.99, '202 Code Ln, Anytown', NULL),
+(49, 65, 49, '2024-04-08', 'Processing', 458.99, 45.90, 504.89, '3535 Paw Print Ln, Animal Kingdom', 'Verify compatibility of dock with customer laptop model.');
+
+-- Bảng ORDER_DETAILS (Tiếp tục od_id, order_id tham chiếu đến các Order mới)
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+-- Order 43
+(43, 66, 1, 1399.99), -- ASUS Zenbook S 13 OLED
+-- Order 44
+(44, 67, 1, 2599.99), -- Dell XPS 17 (9730)
+(44, 69, 1, 429.00),  -- Bose QuietComfort Ultra Headphones
+-- Order 45
+(45, 70, 1, 399.99),  -- GoPro HERO12 Black
+-- Order 46
+(46, 71, 1, 699.00),  -- AMD Ryzen 9 7950X3D CPU
+(46, 61, 1, 109.95),  -- Noctua NH-D15 CPU Cooler (ID từ lô trước)
+-- Order 47
+(47, 72, 1, 799.00),  -- Used MacBook Air M1
+-- Order 48
+(48, 75, 1, 189.99),  -- SteelSeries Apex Pro TKL
+-- Order 49
+(49, 68, 1, 159.00),  -- Logitech G Pro X Superlight 2 Mouse
+(49, 73, 1, 299.99);  -- Anker PowerExpand Elite Dock
+
+----------------------------------------------------
+-- INSERT THÊM DỮ LIỆU MẪU (PHẦN 7)
+----------------------------------------------------
+
+-- Bảng CUSTOMERS (Tiếp tục từ ID 66)
+INSERT INTO CUSTOMERS (customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+(66, 'indie_dev_journey', 'indie.dev@example.game', 'Alex', 'Tyler', '2024-03-21 09:00:00', 'M', '3636 Pixel Path, Indie Ville', '1993-02-11', '0946677788'),
+(67, 'ux_research_lead', 'ux.research@example.design', 'Brenda', 'Chen', '2024-03-22 10:15:00', 'F', '3737 Persona Pl, Empathy City', '1988-07-22', '0947788899'),
+(68, 'devrel_advocate_io', 'devrel.io@example.community', 'Carlos', 'Santos', '2024-03-23 11:30:00', 'M', '3838 Connect Ave, Dev Hub', '1990-12-01', '0948899900'),
+(69, 'growth_hacker_pro', 'growth.pro@example.marketing', 'Diana', 'Ross', '2024-03-24 13:45:00', 'F', '3939 Viral Loop, Scale Up Town', '1995-04-14', '0949900011'),
+(70, 'product_manager_strat', 'pm.strat@example.product', 'Edward', 'Norton', '2024-03-25 15:00:00', 'M', '4040 Roadmap Rd, Feature City', '1985-09-28', '0950011122'),
+(71, 'freelance_writer_words', 'freelance.words@example.content', 'Fiona', 'Gallagher', '2024-03-26 09:45:00', 'F', '4141 Quill St, Storyville', '1992-01-05', '0951122233'),
+(72, 'sound_designer_audio', 'sound.audio@example.media', 'George', 'Lucas', '2024-03-27 11:00:00', 'M', '4242 Waveform Way, Soundscape City', '1977-05-25', '0952233344'),
+(73, 'motion_graphics_anim', 'motion.anim@example.art', 'Helen', 'Mirren', '2024-03-28 12:15:00', 'F', '4343 Keyframe Ln, Animate Town', '1980-08-10', '0953344455'),
+(74, 'brand_strategist_id', 'brand.id@example.agency', 'Ian', 'McKellen', '2024-03-29 14:30:00', 'M', '4444 Logo Loop, Identity City', '1969-03-03', '0954455566'),
+(75, 'community_manager_forum', 'community.forum@example.social', 'Jessica', 'Chastain', '2024-03-30 16:00:00', 'F', '4545 Thread Ave, Engage Ville', '1987-10-19', '0955566677');
+
+-- Bảng EMPLOYEES (Tiếp tục từ ID 41)
+INSERT INTO EMPLOYEES (employee_id, first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+(41, 'Victoria', 'Bell', '0916789001', '410 E-commerce Plaza', 'F', 'U111111111', 'Online Sales Specialist', 5400.00, 'Mon-Fri 9-5:30', '2024-05-06', 'victoria.bell@store.com'),
+(42, 'Ryan', 'Stewart', '0916789002', '420 Repair Bench', 'M', 'V222222222', 'Senior Repair Tech', 6300.00, 'Tue-Sat 10-7', '2024-05-13', 'ryan.stewart@store.com'),
+(43, 'Natalie', 'Price', '0916789003', '430 Social Media Suite', 'F', 'W333333333', 'Social Media Manager', 5700.00, 'Mon-Fri 9:30-6', '2024-05-20', 'natalie.price@store.com'),
+(44, 'Brandon', 'Morris', '0916789004', '440 Procurement Office', 'M', 'X444444444', 'Purchasing Agent', 5900.00, 'Mon-Fri 9-5', '2024-05-27', 'brandon.morris@store.com'),
+(45, 'Lily', 'Peterson', '0916789005', '450 Customer Care Hub', 'F', 'Y555555555', 'Support Agent', 4700.00, 'Mon-Fri 10-6:30', '2024-06-03', 'lily.peterson@store.com');
+
+-- Bảng PRODUCTS (Tiếp tục từ ID 76)
+-- Sử dụng category_id từ 1-15
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(76, 'HP Spectre Foldable PC', 'SpectreFold17', 'HP', '17-inch Foldable OLED PC, Intel Core i7, 16GB RAM, 1TB SSD', 4999.99, 5, '2023-09-14 00:00:00', 4, 'Laptop'), -- 2-in-1 / Foldable
+(77, 'Samsung Galaxy Book3 Ultra', 'NP960XFH-XA1US', 'Samsung', '16-inch AMOLED Creator Laptop, Intel Core i9, 32GB RAM, 1TB SSD, RTX 4070', 2399.99, 18, '2023-02-01 00:00:00', 2, 'Laptop'),
+(78, 'Corsair K100 AIR WIRELESS RGB Keyboard', 'CH-913A01U-NA', 'Corsair', 'Ultra-Thin Mechanical Gaming Keyboard, Cherry MX Ultra Low Profile Switches', 279.99, 25, '2022-09-20 00:00:00', 14, 'Keyboards & Mice (External)'),
+(79, 'Shure MV7 USB Podcast Microphone', 'MV7-K', 'Shure', 'USB/XLR Dynamic Microphone for Podcasting, Recording, Streaming', 249.00, 30, '2020-10-26 00:00:00', 7, 'Accessory'), -- Microphone
+(80, 'WD My Passport SSD 4TB', 'WDBAGF0040BGY-WESN', 'Western Digital', '4TB Portable NVMe SSD, USB 3.2 Gen-2, Gray', 299.99, 20, '2021-04-15 00:00:00', 13, 'External Storage (HDD/SSD)'),
+(81, 'NVIDIA GeForce RTX 4090 Founders Edition', '900-1G136-2530-000', 'NVIDIA', 'Flagship Gaming Graphics Card, 24GB GDDR6X', 1599.00, 8, '2022-10-12 00:00:00', 9, 'Laptop Components'), -- Desktop GPU
+(82, 'Refurbished Microsoft Surface Pro 8', 'SurfacePro8-i5-8-256-R', 'Microsoft', 'Refurbished 13-inch Tablet, Intel Core i5, 8GB RAM, 256GB SSD, Platinum', 759.00, 12, '2021-10-05 00:00:00', 10, 'Used & Refurbished Laptops'), -- Tablet/Refurbished
+(83, 'Plugable UD-ULTC4K Thunderbolt 3 and USB-C Dock', 'UD-ULTC4K', 'Plugable', 'Triple 4K Display Docking Station for macOS and Windows', 279.00, 15, '2020-11-01 00:00:00', 12, 'Docking Stations'),
+(84, 'G.SKILL Trident Z5 RGB 32GB DDR5 6000MHz', 'F5-6000J3040F16GX2-TZ5RK', 'G.SKILL', '32GB (2x16GB) DDR5 6000MHz CL30 Desktop Memory Kit, Black', 124.99, 28, '2021-11-01 00:00:00', 9, 'Laptop Components'), -- Desktop RAM
+(85, 'Everki Atlas Laptop Backpack (13-17.3 inch)', 'EKP121', 'Everki', 'Checkpoint Friendly Laptop Backpack with Adaptable Compartment', 149.99, 22, '2015-01-01 00:00:00', 11, 'Laptop Bags & Sleeves');
+
+-- Dữ liệu cho đơn hàng mới (tiếp tục từ Order ID 50)
+-- Order 50: customer_id=66, 1 product (product_id=76, HP Spectre Foldable, price 4999.99)
+-- Net: 4999.99, Tax: 500.00, Total: 5499.99
+-- Order 51: customer_id=67, 2 products (product_id=77, Galaxy Book3 Ultra, price 2399.99; product_id=79, Shure MV7 Mic, price 249.00)
+-- Net: 2399.99 + 249.00 = 2648.99, Tax: 264.90, Total: 2913.89
+-- Order 52: customer_id=40, 1 product (product_id=80, WD My Passport SSD 4TB, price 299.99)
+-- Net: 299.99, Tax: 30.00, Total: 329.99
+-- Order 53: customer_id=70, 2 products (product_id=81, RTX 4090 FE, price 1599.00; product_id=71, AMD Ryzen 9 7950X3D, price 699.00)
+-- Net: 1599.00 + 699.00 = 2298.00, Tax: 229.80, Total: 2527.80
+-- Order 54: customer_id=73, 1 product (product_id=82, Used Surface Pro 8, price 759.00)
+-- Net: 759.00, Tax: 75.90, Total: 834.90
+-- Order 55: customer_id=10, 1 product (product_id=85, Everki Atlas Backpack, price 149.99)
+-- Net: 149.99, Tax: 15.00, Total: 164.99
+-- Order 56: customer_id=75, 2 products (product_id=78, Corsair K100 Air, price 279.99; product_id=83, Plugable Dock, price 279.00)
+-- Net: 279.99 + 279.00 = 558.99, Tax: 55.90, Total: 614.89
+
+-- Bảng PAYMENTS (Tiếp tục từ ID 50, khớp với các Order mới ở trên)
+INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(50, 41, '2024-04-09 09:00:00', 'Credit Card', 5499.99, 'Completed', 'Order #50, HP Spectre Foldable PC, High Value'),
+(51, 43, '2024-04-09 10:45:00', 'Bank Transfer', 2913.89, 'Completed', 'Order #51, Samsung Galaxy Book3 Ultra + Shure Mic'),
+(52, 45, '2024-04-10 11:30:00', 'PayPal', 329.99, 'Completed', 'Order #52, WD My Passport SSD 4TB'),
+(53, 20, '2024-04-10 14:15:00', 'Credit Card', 2527.80, 'Processing', 'Order #53, RTX 4090 + Ryzen 7950X3D, Verify Stock'),
+(54, 22, '2024-04-11 09:45:00', 'Debit Card', 834.90, 'Completed', 'Order #54, Refurbished Surface Pro 8'),
+(55, 24, '2024-04-12 10:30:00', 'Credit Card', 164.99, 'Completed', 'Order #55, Everki Atlas Backpack'),
+(56, 26, '2024-04-12 15:00:00', 'PayPal', 614.89, 'Completed', 'Order #56, Corsair K100 Air + Plugable Dock');
+
+-- Bảng ORDERS (Tiếp tục từ ID 50)
+INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(50, 66, 50, '2024-04-09', 'Processing', 4999.99, 500.00, 5499.99, '3636 Pixel Path, Indie Ville', 'Special order, handle with extreme care.'),
+(51, 67, 51, '2024-04-09', 'Shipped', 2648.99, 264.90, 2913.89, '3737 Persona Pl, Empathy City', 'Leave package with front desk if recipient not available.'),
+(52, 40, 52, '2024-04-10', 'Delivered', 299.99, 30.00, 329.99, '1010 Ledger Ln, Crypto Town', 'Customer confirmed receipt via phone.'),
+(53, 70, 53, '2024-04-10', 'Awaiting Stock Confirmation', 2298.00, 229.80, 2527.80, '4040 Roadmap Rd, Feature City', 'RTX 4090 stock low, confirming availability.'),
+(54, 73, 54, '2024-04-11', 'Processing', 759.00, 75.90, 834.90, '4343 Keyframe Ln, Animate Town', 'Refurbished item, final quality check underway.'),
+(55, 10, 55, '2024-04-12', 'Shipped', 149.99, 15.00, 164.99, '707 Art St, Anytown', 'Standard shipping, tracking number provided.'),
+(56, 75, 56, '2024-04-12', 'Delivered', 558.99, 55.90, 614.89, '4545 Thread Ave, Engage Ville', NULL);
+
+-- Bảng ORDER_DETAILS (Tiếp tục od_id, order_id tham chiếu đến các Order mới)
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+-- Order 50
+(50, 76, 1, 4999.99), -- HP Spectre Foldable PC
+-- Order 51
+(51, 77, 1, 2399.99), -- Samsung Galaxy Book3 Ultra
+(51, 79, 1, 249.00),  -- Shure MV7 USB Podcast Microphone
+-- Order 52
+(52, 80, 1, 299.99),  -- WD My Passport SSD 4TB
+-- Order 53
+(53, 81, 1, 1599.00), -- NVIDIA GeForce RTX 4090 Founders Edition
+(53, 71, 1, 699.00),  -- AMD Ryzen 9 7950X3D CPU (ID từ lô trước)
+-- Order 54
+(54, 82, 1, 759.00),  -- Used Microsoft Surface Pro 8
+-- Order 55
+(55, 85, 1, 149.99),  -- Everki Atlas Laptop Backpack
+-- Order 56
+(56, 78, 1, 279.99),  -- Corsair K100 AIR WIRELESS RGB Keyboard
+(56, 83, 1, 279.00);  -- Plugable UD-ULTC4K Dock
+
+----------------------------------------------------
+-- INSERT THÊM DỮ LIỆU MẪU (PHẦN 8)
+----------------------------------------------------
+
+-- Bảng CUSTOMERS (Tiếp tục từ ID 76)
+INSERT INTO CUSTOMERS (customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+(76, 'digital_artist_procreate', 'artist.procreate@example.art', 'Kenji', 'Tanaka', '2024-04-01 09:30:00', 'M', '4646 Tablet Terrace, Sketch City', '1996-02-20', '0956677788'),
+(77, 'cloud_native_dev', 'cloudnative.dev@example.cloud', 'Linda', 'Hamilton', '2024-04-02 10:45:00', 'F', '4747 K8s Lane, Container Ville', '1989-07-15', '0957788899'),
+(78, 'ai_ethics_advocate', 'ai.ethics@example.org', 'Marcus', 'Aurelius', '2024-04-03 11:50:00', 'M', '4848 Philosophy Way, Reason Town', '1975-12-03', '0958899900'),
+(79, 'sustainable_fashion_guru', 'sustainable.fashion@example.style', 'Nina', 'Garcia', '2024-04-04 13:00:00', 'F', '4949 Eco Chic Blvd, Green Threads City', '1992-04-28', '0959900011'),
+(80, 'quantum_computing_exp', 'quantum.exp@example.science', 'Oscar', 'Isaac', '2024-04-05 14:15:00', 'M', '5050 Qubit Rd, Entanglement Town', '1983-09-10', '0960011122'),
+(81, 'smart_city_planner_urb', 'smartcity.urban@example.gov', 'Penelope', 'Cruz', '2024-04-06 09:00:00', 'F', '5151 Urban Grid, Future Metro', '1974-04-28', '0961122233'),
+(82, 'space_tourism_pioneer', 'spacetour.pioneer@example.space', 'Quentin', 'Tarantino', '2024-04-07 10:30:00', 'M', '5252 Rocket Launchpad, Orbit Ville', '1963-03-27', '0962233344'),
+(83, 'renewable_energy_expert', 'renewable.energy@example.green', 'Rachel', 'McAdams', '2024-04-08 11:45:00', 'F', '5353 Solar Panel Park, Clean Energy City', '1978-11-17', '0963344455'),
+(84, 'neuroscience_researcher', 'neuro.research@example.edu', 'Sam', 'Rockwell', '2024-04-09 13:00:00', 'M', '5454 Brain Wave Blvd, Cognition Town', '1968-11-05', '0964455566'),
+(85, 'marine_biologist_deep', 'marine.bio@example.ocean', 'Tilda', 'Swinton', '2024-04-10 14:30:00', 'F', '5555 Coral Reef Rd, Deep Blue City', '1960-11-05', '0965566677');
+
+-- Bảng EMPLOYEES (Tiếp tục từ ID 46)
+INSERT INTO EMPLOYEES (employee_id, first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+(46, 'Eleanor', 'Hughes', '0917890101', '460 Finance Tower', 'F', 'Z666666666', 'Accountant', 6100.00, 'Mon-Fri 9-5', '2024-06-10', 'eleanor.hughes@store.com'),
+(47, 'Gabriel', 'Flores', '0917890102', '470 HR Department', 'M', 'AA77777777', 'HR Specialist', 5600.00, 'Mon-Fri 8:30-5', '2024-06-17', 'gabriel.flores@store.com'),
+(48, 'Hazel', 'Perez', '0917890103', '480 Operations Center', 'F', 'BB88888888', 'Operations Coordinator', 5200.00, 'Mon-Fri 9-6', '2024-06-24', 'hazel.perez@store.com'),
+(49, 'Jasper', 'Sanchez', '0917890104', '490 Training Room', 'M', 'CC99999999', 'Technical Trainer', 6000.00, 'Mon-Fri 9-5:30', '2024-07-01', 'jasper.sanchez@store.com'),
+(50, 'Willow', 'Ramirez', '0917890105', '500 Store Front', 'F', 'DD00000000', 'Cashier Supervisor', 4300.00, 'Tue-Sat 10-7', '2024-07-08', 'willow.ramirez@store.com');
+
+-- Bảng PRODUCTS (Tiếp tục từ ID 86)
+-- Sử dụng category_id từ 1-15
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(86, 'Lenovo Legion Slim 7i Gen 8', 'LegionS7-16IRH8', 'Lenovo', '16-inch Slim Gaming Laptop, Intel Core i7-13700H, RTX 4060, 16GB RAM, 1TB SSD', 1699.99, 22, '2023-06-10 00:00:00', 1, 'Laptop'),
+(87, 'Apple MacBook Pro 16 M3 Max', 'M3Max-16-64-2TB', 'Apple', '16-inch, Apple M3 Max chip, 64GB RAM, 2TB SSD, Liquid Retina XDR ProMotion', 4299.00, 10, '2023-10-30 00:00:00', 6, 'Laptop'),
+(88, 'Logitech MX Anywhere 3S Mouse', '910-006928', 'Logitech', 'Compact Performance Mouse, MagSpeed Scrolling, Works on Glass, Graphite', 79.99, 60, '2023-05-30 00:00:00', 7, 'Accessory'),
+(89, 'Sennheiser Momentum 4 Wireless Headphones', 'M4AEBT', 'Sennheiser', 'Adaptive Noise Cancellation Headphones with Superior Sound, 60-Hour Battery', 379.95, 25, '2022-08-09 00:00:00', 7, 'Accessory'),
+(90, 'DJI Osmo Action 4 Adventure Combo', 'CP.OS.00000269.01', 'DJI', '4K/120fps Waterproof Action Camera with Extra Battery and Accessories', 399.00, 18, '2023-08-02 00:00:00', 7, 'Accessory'),
+(91, 'Intel Core i9-14900K CPU', 'BX8071514900K', 'Intel', '24-Core (8P+16E), 32-Thread Unlocked Desktop Processor, Up to 6.0 GHz', 589.00, 15, '2023-10-17 00:00:00', 9, 'Laptop Components'), -- Desktop CPU
+(92, 'Refurbished Dell Latitude 5430', 'Lat5430-i7-16-512-R', 'Dell', 'Refurbished 14-inch Business Laptop, Intel Core i7, 16GB RAM, 512GB SSD, Grade A+', 849.00, 14, '2022-03-15 00:00:00', 10, 'Used & Refurbished Laptops'),
+(93, 'Kensington SD5780T Thunderbolt 4 Dock', 'K33040NA', 'Kensington', 'Thunderbolt 4 Docking Station, Dual 4K, 96W Power Delivery', 329.99, 16, '2022-12-01 00:00:00', 12, 'Docking Stations'),
+(94, 'Crucial T700 2TB Gen5 NVMe SSD', 'CT2000T700SSD3', 'Crucial', '2TB PCIe Gen5 NVMe M.2 Internal SSD, Up to 12,400MB/s Read', 259.99, 20, '2023-05-30 00:00:00', 9, 'Laptop Components'),
+(95, 'NuPhy Air75 V2 QMK/VIA Mechanical Keyboard', 'Air75V2-IonicWhite', 'NuPhy', '75% Low-Profile Wireless Mechanical Keyboard, Hot-Swappable Gateron Switches', 139.95, 28, '2023-08-22 00:00:00', 14, 'Keyboards & Mice (External)');
+
+-- Dữ liệu cho đơn hàng mới (tiếp tục từ Order ID 57)
+-- Order 57: customer_id=76, 1 product (product_id=86, Legion Slim 7i, price 1699.99)
+-- Net: 1699.99, Tax: 170.00, Total: 1869.99
+-- Order 58: customer_id=77, 2 products (product_id=87, MacBook Pro 16 M3 Max, price 4299.00; product_id=89, Sennheiser Momentum 4, price 379.95)
+-- Net: 4299.00 + 379.95 = 4678.95, Tax: 467.90, Total: 5146.85
+-- Order 59: customer_id=45, 1 product (product_id=90, DJI Osmo Action 4, price 399.00)
+-- Net: 399.00, Tax: 39.90, Total: 438.90
+-- Order 60: customer_id=80, 2 products (product_id=91, Intel Core i9-14900K, price 589.00; product_id=81, RTX 4090 FE, price 1599.00)
+-- Net: 589.00 + 1599.00 = 2188.00, Tax: 218.80, Total: 2406.80
+-- Order 61: customer_id=83, 1 product (product_id=92, Used Dell Latitude 5430, price 849.00)
+-- Net: 849.00, Tax: 84.90, Total: 933.90
+-- Order 62: customer_id=15, 1 product (product_id=95, NuPhy Air75 V2 Keyboard, price 139.95)
+-- Net: 139.95, Tax: 14.00, Total: 153.95
+-- Order 63: customer_id=85, 2 products (product_id=88, Logitech MX Anywhere 3S, price 79.99; product_id=93, Kensington SD5780T Dock, price 329.99)
+-- Net: 79.99 + 329.99 = 409.98, Tax: 41.00, Total: 450.98
+
+-- Bảng PAYMENTS (Tiếp tục từ ID 57, khớp với các Order mới ở trên)
+INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(57, 46, '2024-04-13 09:15:00', 'Credit Card', 1869.99, 'Completed', 'Order #57, Lenovo Legion Slim 7i'),
+(58, 48, '2024-04-13 10:50:00', 'Bank Transfer', 5146.85, 'Completed', 'Order #58, MacBook Pro 16 M3 Max + Sennheiser Headphones, High Value'),
+(59, 50, '2024-04-14 11:30:00', 'PayPal', 438.90, 'Completed', 'Order #59, DJI Osmo Action 4 Combo'),
+(60, 25, '2024-04-14 14:00:00', 'Credit Card', 2406.80, 'Processing', 'Order #60, High-end PC Components, Address Verification'),
+(61, 27, '2024-04-15 09:00:00', 'Debit Card', 933.90, 'Completed', 'Order #61, Refurbished Dell Latitude 5430'),
+(62, 29, '2024-04-16 10:20:00', 'Credit Card', 153.95, 'Completed', 'Order #62, NuPhy Air75 V2 Keyboard'),
+(63, 31, '2024-04-16 15:00:00', 'PayPal', 450.98, 'Completed', 'Order #63, Logitech Mouse + Kensington Dock');
+
+-- Bảng ORDERS (Tiếp tục từ ID 57)
+INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(57, 76, 57, '2024-04-13', 'Shipped', 1699.99, 170.00, 1869.99, '3636 Pixel Path, Indie Ville', 'Tracking number sent to customer.'),
+(58, 77, 58, '2024-04-13', 'Processing', 4678.95, 467.90, 5146.85, '3737 Persona Pl, Empathy City', 'Special insurance for high value items.'),
+(59, 45, 59, '2024-04-14', 'Delivered', 399.00, 39.90, 438.90, '1515 Doc Rd, Content City', 'Package received by customer.'),
+(60, 80, 60, '2024-04-14', 'Awaiting Stock for CPU', 2188.00, 218.80, 2406.80, '5050 Qubit Rd, Entanglement Town', 'CPU i9-14900K expected in 2 days.'),
+(61, 83, 61, '2024-04-15', 'Shipped', 849.00, 84.90, 933.90, '5353 Solar Panel Park, Clean Energy City', 'Refurbished item, tested and certified.'),
+(62, 15, 62, '2024-04-16', 'Delivered', 139.95, 14.00, 153.95, '555 Firewall St, Cybertown', NULL),
+(63, 85, 63, '2024-04-16', 'Processing', 409.98, 41.00, 450.98, '5555 Coral Reef Rd, Deep Blue City', 'Customer inquired about faster shipping options.');
+
+-- Bảng ORDER_DETAILS (Tiếp tục od_id, order_id tham chiếu đến các Order mới)
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+-- Order 57
+(57, 86, 1, 1699.99), -- Lenovo Legion Slim 7i Gen 8
+-- Order 58
+(58, 87, 1, 4299.00), -- Apple MacBook Pro 16 M3 Max
+(58, 89, 1, 379.95),  -- Sennheiser Momentum 4 Wireless
+-- Order 59
+(59, 90, 1, 399.00),  -- DJI Osmo Action 4
+-- Order 60
+(60, 91, 1, 589.00),  -- Intel Core i9-14900K CPU
+(60, 81, 1, 1599.00), -- NVIDIA GeForce RTX 4090 FE (ID từ lô trước)
+-- Order 61
+(61, 92, 1, 849.00),  -- Used Dell Latitude 5430
+-- Order 62
+(62, 95, 1, 139.95),  -- NuPhy Air75 V2 Keyboard
+-- Order 63
+(63, 88, 1, 79.99),   -- Logitech MX Anywhere 3S Mouse
+(63, 93, 1, 329.99);  -- Kensington SD5780T Dock
+
+----------------------------------------------------
+-- INSERT THÊM DỮ LIỆU MẪU (PHẦN 9)
+----------------------------------------------------
+
+-- Bảng CUSTOMERS (Tiếp tục từ ID 86)
+INSERT INTO CUSTOMERS (customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+(86, '3d_modeler_pro', '3d.modeler@example.design', 'Ursula', 'Le Guin', '2024-04-11 09:00:00', 'F', '5656 Polygon Plaza, Render City', '1929-10-21', '0966677788'),
+(87, 'video_editor_guru', 'video.editor@example.media', 'Viggo', 'Mortensen', '2024-04-12 10:15:00', 'M', '5757 Timeline Terrace, Edit Bay', '1958-10-20', '0967788899'),
+(88, 'podcast_producer_snd', 'podcast.prod@example.audio', 'Winona', 'Ryder', '2024-04-13 11:30:00', 'F', '5858 Soundwave Studio, Mic Booth', '1971-10-29', '0968899900'),
+(89, 'ar_filter_creator', 'ar.filter@example.social', 'Xavier', 'Dolan', '2024-04-14 13:45:00', 'M', '5959 Spark Street, Effect Ville', '1989-03-20', '0969900011'),
+(90, 'vr_experience_dev', 'vr.exp@example.world', 'Yara', 'Shahidi', '2024-04-15 15:00:00', 'F', '6060 Immersion Lane, Virtual Realm', '2000-02-10', '0970011122'),
+(91, 'data_journalist_info', 'data.journo@example.news', 'Zack', 'Snyder', '2024-04-16 09:45:00', 'M', '6161 Insight Ave, Report City', '1966-03-01', '0971122233'),
+(92, 'game_streamer_live', 'stream.live@example.gg', 'Anya', 'Taylor-Joy', '2024-04-17 11:00:00', 'F', '6262 Playback Plaza, Streamer Hub', '1996-04-16', '0972233344'),
+(93, 'mobile_game_designer', 'mobile.design@example.game', 'Ben', 'Affleck', '2024-04-18 12:15:00', 'M', '6363 Tap Target Terrace, Casual Town', '1972-08-15', '0973344455'),
+(94, 'cloud_security_analyst', 'cloudsec.analyst@example.cloud', 'Cate', 'Blanchett', '2024-04-19 14:30:00', 'F', '6464 Secure Cloud St, Data Fortress', '1969-05-14', '0974455566'),
+(95, 'ai_prompt_engineer', 'prompt.engineer@example.ai', 'Daniel', 'Day-Lewis', '2024-04-20 16:00:00', 'M', '6565 Generative Way, Model City', '1957-04-29', '0975566677');
+
+-- Bảng EMPLOYEES (Tiếp tục từ ID 51)
+INSERT INTO EMPLOYEES (employee_id, first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+(51, 'Aurora', 'Steele', '0918901201', '510 Tech Park Loop', 'F', 'EE11111111', 'Lead Sales', 6700.00, 'Mon-Fri 9-6', '2024-07-15', 'aurora.steele@store.com'),
+(52, 'Finn', 'Bishop', '0918901202', '520 Innovation Dr', 'M', 'FF22222222', 'Repair Supervisor', 6000.00, 'Tue-Sat 9:30-6:30', '2024-07-22', 'finn.bishop@store.com'),
+(53, 'Seraphina', 'Cruz', '0918901203', '530 Digital Way', 'F', 'GG33333333', 'Online Marketing Exec', 5500.00, 'Mon-Fri 10-6', '2024-07-29', 'seraphina.cruz@store.com'),
+(54, 'Jasper', 'Wolf', '0918901204', '540 Component Ave', 'M', 'HH44444444', 'Logistics Specialist', 5100.00, 'Mon-Fri 8-4:30', '2024-08-05', 'jasper.wolf@store.com'),
+(55, 'Luna', 'Hayes', '0918901205', '550 Support Central', 'F', 'II55555555', 'Senior Support Agent', 5000.00, 'Rotating Shifts, Incl. Wknds', '2024-08-12', 'luna.hayes@store.com');
+
+-- Bảng PRODUCTS (Tiếp tục từ ID 101)
+-- Sử dụng category_id từ 1-15
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(101, 'MSI Titan GT77 HX (2024)', 'TitanGT77HX-14V', 'MSI', '17.3-inch 4K Mini-LED Gaming Laptop, Intel Core i9-14900HX, RTX 4090, 64GB RAM, 4TB SSD', 4999.00, 7, '2024-02-15 00:00:00', 1, 'Laptop'),
+(102, 'Dell Precision 7780 Mobile Workstation', 'Precision7780', 'Dell', '17.3-inch Workstation, Intel Core i9-13950HX, NVIDIA RTX 5000 Ada, 64GB RAM, 2TB SSD', 4599.00, 10, '2023-07-01 00:00:00', 2, 'Laptop'),
+(103, 'SteelSeries Arctis Nova Pro Wireless Headset', '61520', 'SteelSeries', 'Multi-System Gaming Headset with Active Noise Cancellation, Dual Battery', 349.99, 35, '2022-06-07 00:00:00', 7, 'Accessory'),
+(104, 'Insta360 X3 Action Camera', 'CINSAAQ/B', 'Insta360', '360 Waterproof Action Camera with 1/2" 48MP Sensors, 5.7K 360 Video', 449.99, 25, '2022-09-08 00:00:00', 7, 'Accessory'),
+(105, 'Synology DiskStation DS923+ NAS', 'DS923+', 'Synology', '4-Bay NAS for Home and Small Business, Expandable Storage', 599.99, 15, '2022-11-16 00:00:00', 13, 'External Storage (HDD/SSD)'), -- NAS fits here
+(106, 'AMD Radeon RX 7900 XTX Graphics Card', 'RX7900XTX', 'AMD', 'High-Performance Gaming Graphics Card, 24GB GDDR6', 999.00, 11, '2022-12-13 00:00:00', 9, 'Laptop Components'), -- Desktop GPU
+(107, 'Refurbished Lenovo Yoga 9i 14 (Gen 7)', 'Yoga9i-14IAP7-R', 'Lenovo', 'Refurbished 14-inch 2-in-1 OLED Laptop, Intel Core i7, 16GB RAM, 512GB SSD', 1099.00, 9, '2022-05-01 00:00:00', 10, 'Used & Refurbished Laptops'),
+(108, 'CalDigit Element Hub', 'ElementHubTB4', 'CalDigit', 'Thunderbolt 4 / USB4 Hub, 4x Thunderbolt 4 Ports, 4x USB-A 10Gb/s Ports', 249.99, 17, '2021-03-01 00:00:00', 12, 'Docking Stations'),
+(109, 'Sabrent Rocket 4 Plus-G 2TB SSD (Gaming Optimized)', 'SB-RKTG-2TB', 'Sabrent', '2TB NVMe PCIe 4.0 M.2 Internal SSD for Gaming, Up to 7,000MB/s Read', 199.99, 22, '2023-03-15 00:00:00', 9, 'Laptop Components'),
+(110, 'Herman Miller Aeron Chair (Refurbished)', 'Aeron-R-B', 'Herman Miller', 'Refurbished Ergonomic Office Chair, Size B, Graphite', 899.00, 5, '2024-01-01 00:00:00', 7, 'Accessory'); -- Office accessory
+
+-- Dữ liệu cho đơn hàng mới (tiếp tục từ Order ID 69)
+-- Order 69: customer_id=86, 1 product (product_id=101, MSI Titan GT77, price 4999.00)
+-- Net: 4999.00, Tax: 499.90, Total: 5498.90
+-- Order 70: customer_id=87, 2 products (product_id=102, Dell Precision 7780, price 4599.00; product_id=103, Arctis Nova Pro, price 349.99)
+-- Net: 4599.00 + 349.99 = 4948.99, Tax: 494.90, Total: 5443.89
+-- Order 71: customer_id=55, 1 product (product_id=104, Insta360 X3, price 449.99)
+-- Net: 449.99, Tax: 45.00, Total: 494.99
+-- Order 72: customer_id=90, 2 products (product_id=105, Synology DS923+, price 599.99; product_id=80, WD My Passport SSD 4TB, price 299.99)
+-- Net: 599.99 + 299.99 = 899.98, Tax: 90.00, Total: 989.98
+-- Order 73: customer_id=93, 1 product (product_id=107, Used Yoga 9i 14, price 1099.00)
+-- Net: 1099.00, Tax: 109.90, Total: 1208.90
+-- Order 74: customer_id=20, 1 product (product_id=110, Herman Miller Aeron, price 899.00)
+-- Net: 899.00, Tax: 89.90, Total: 988.90
+-- Order 75: customer_id=95, 2 products (product_id=106, AMD Radeon RX 7900 XTX, price 999.00; product_id=108, CalDigit Element Hub, price 249.99)
+-- Net: 999.00 + 249.99 = 1248.99, Tax: 124.90, Total: 1373.89
+
+-- Bảng PAYMENTS (Tiếp tục từ ID 69, khớp với các Order mới ở trên)
+INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(69, 51, '2024-04-20 09:30:00', 'Credit Card', 5498.90, 'Completed', 'Order #69, MSI Titan GT77 HX, Expedited Shipping'),
+(70, 53, '2024-04-20 11:00:00', 'Bank Transfer', 5443.89, 'Completed', 'Order #70, Dell Precision Workstation + Headset'),
+(71, 55, '2024-04-21 10:15:00', 'PayPal', 494.99, 'Completed', 'Order #71, Insta360 X3 Action Camera'),
+(72, 30, '2024-04-21 14:45:00', 'Credit Card', 989.98, 'Processing', 'Order #72, Synology NAS + WD SSD, Verify Address'),
+(73, 32, '2024-04-22 09:00:00', 'Debit Card', 1208.90, 'Completed', 'Order #73, Refurbished Lenovo Yoga 9i'),
+(74, 34, '2024-04-23 10:30:00', 'Credit Card', 988.90, 'Completed', 'Order #74, Herman Miller Aeron Chair'),
+(75, 36, '2024-04-23 15:15:00', 'PayPal', 1373.89, 'Completed', 'Order #75, AMD GPU + CalDigit Hub');
+
+-- Bảng ORDERS (Tiếp tục từ ID 69)
+INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(69, 86, 69, '2024-04-20', 'Shipped', 4999.00, 499.90, 5498.90, '5656 Polygon Plaza, Render City', 'High value item, adult signature required.'),
+(70, 87, 70, '2024-04-20', 'Processing', 4948.99, 494.90, 5443.89, '5757 Timeline Terrace, Edit Bay', 'Customer requests setup assistance call upon delivery.'),
+(71, 55, 71, '2024-04-21', 'Delivered', 449.99, 45.00, 494.99, '2525 Victory Lane, Pro Gamer Town', 'Package left at front door as per request.'),
+(72, 90, 72, '2024-04-21', 'Awaiting Payment Confirmation', 899.98, 90.00, 989.98, '6060 Immersion Lane, Virtual Realm', 'Payment authorization pending.'),
+(73, 93, 73, '2024-04-22', 'Shipped', 1099.00, 109.90, 1208.90, '6363 Tap Target Terrace, Casual Town', 'Refurbished laptop, includes 1-year warranty.'),
+(74, 20, 74, '2024-04-23', 'Delivered', 899.00, 89.90, 988.90, '200 Biotech Circle', 'Chair delivered, assembly required.'),
+(75, 95, 75, '2024-04-23', 'Processing', 1248.99, 124.90, 1373.89, '6565 Generative Way, Model City', 'Checking compatibility of hub with GPU.');
+
+-- Bảng ORDER_DETAILS (Tiếp tục od_id, order_id tham chiếu đến các Order mới)
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+-- Order 69
+(69, 101, 1, 4999.00), -- MSI Titan GT77 HX
+-- Order 70
+(70, 102, 1, 4599.00), -- Dell Precision 7780
+(70, 103, 1, 349.99), -- SteelSeries Arctis Nova Pro Wireless
+-- Order 71
+(71, 104, 1, 449.99), -- Insta360 X3
+-- Order 72
+(72, 105, 1, 599.99), -- Synology DiskStation DS923+
+(72, 80, 1, 299.99),  -- WD My Passport SSD 4TB (ID từ lô trước)
+-- Order 73
+(73, 107, 1, 1099.00),-- Used Lenovo Yoga 9i 14
+-- Order 74
+(74, 110, 1, 899.00), -- Herman Miller Aeron Chair
+-- Order 75
+(75, 106, 1, 999.00), -- AMD Radeon RX 7900 XTX
+(75, 108, 1, 249.99); -- CalDigit Element Hub
+
+----------------------------------------------------
+-- INSERT THÊM DỮ LIỆU MẪU (PHẦN 10)
+----------------------------------------------------
+
+-- Bảng CUSTOMERS (Tiếp tục từ ID 96)
+INSERT INTO CUSTOMERS (customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES
+(96, 'ux_unicorn_magic', 'ux.unicorn@example.design', 'Emma', 'Stone', '2024-04-21 09:15:00', 'F', '6666 Wireframe Way, UserFlow City', '1988-11-06', '0976677788'),
+(97, 'devops_dynamo_cloud', 'devops.dynamo@example.cloud', 'Florence', 'Pugh', '2024-04-22 10:30:00', 'F', '6767 Pipeline Plaza, CI-CD Ville', '1996-01-03', '0977788899'),
+(98, 'ai_artist_gan', 'ai.gan@example.art', 'Gael', 'Garcia Bernal', '2024-04-23 11:45:00', 'M', '6868 Neural Style St, DeepArt Town', '1978-11-30', '0978899900'),
+(99, 'sustainable_tech_lead', 'sustech.lead@example.green', 'Henry', 'Cavill', '2024-04-24 13:00:00', 'M', '6969 Eco Innovation Ave, GreenTech Hub', '1983-05-05', '0979900011'),
+(100, 'quantum_physicist_exp', 'quantum.phys@example.science', 'Idris', 'Elba', '2024-04-25 14:15:00', 'M', '7070 Superposition Rd, Quantum Realm', '1972-09-06', '0980011122'),
+(101, 'smart_home_integrator', 'smarthome.int@example.tech', 'Jennifer', 'Lawrence', '2024-04-26 09:00:00', 'F', '7171 Connected Home, IoT Ville', '1990-08-15', '0981122233'),
+(102, 'space_exploration_adv', 'space.advocate@example.space', 'Keanu', 'Reeves', '2024-04-27 10:30:00', 'M', '7272 Galaxy Way, Cosmos City', '1964-09-02', '0982233344'),
+(103, 'clean_energy_innovator', 'cleanenergy.innov@example.green', 'Lupita', 'Nyongo', '2024-04-28 11:45:00', 'F', '7373 Wind Turbine Park, Renewable Hub', '1983-03-01', '0983344455'),
+(104, 'cognitive_science_prof', 'cogsci.prof@example.edu', 'Mahershala', 'Ali', '2024-04-29 13:00:00', 'M', '7474 Mind Map Blvd, Thought Town', '1974-02-16', '0984455566'),
+(105, 'oceanographer_deepsea', 'ocean.deep@example.ocean', 'Natalie', 'Portman', '2024-04-30 14:30:00', 'F', '7575 Mariana Trench Rd, Abyss City', '1981-06-09', '0985566677');
+
+-- Bảng EMPLOYEES (Tiếp tục từ ID 56)
+INSERT INTO EMPLOYEES (employee_id, first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) VALUES
+(56, 'Orion', 'Blackwood', '0919012301', '560 Galaxy Ave', 'M', 'JJ66666666', 'Astrophysics Consultant', 7500.00, 'Mon-Thu 10-6', '2024-08-19', 'orion.blackwood@store.com'),
+(57, 'Lyra', 'Silverstream', '0919012302', '570 Nebula Lane', 'F', 'KK77777777', 'Creative Director (Visuals)', 6800.00, 'Mon-Fri 9:30-6', '2024-08-26', 'lyra.silverstream@store.com'),
+(58, 'Leo', 'Hart', '0919012303', '580 Circuit Central', 'M', 'LL88888888', 'Lead Electronics Tech', 6200.00, 'Tue-Sat 10-7', '2024-09-02', 'leo.hart@store.com'),
+(59, 'Stella', 'Nova', '0919012304', '590 Starlight Blvd', 'F', 'MM99999999', 'Customer Experience Mgr', 5900.00, 'Mon-Fri 9-5:30', '2024-09-09', 'stella.nova@store.com'),
+(60, 'Caspian', 'Stone', '0919012305', '600 Algorithm Alley', 'M', 'NN00000000', 'Software Engineer', 7000.00, 'Mon-Fri 10-6:30, Remote', '2024-09-16', 'caspian.stone@store.com');
+
+-- Bảng PRODUCTS (Tiếp tục từ ID 111)
+-- Sử dụng category_id từ 1-15
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(111, 'ASUS ROG Ally X (2024)', 'RC72L', 'Asus', 'Upgraded Handheld Gaming PC, AMD Ryzen Z1 Extreme, 24GB RAM, 1TB SSD, Improved Battery', 799.99, 30, '2024-06-02 00:00:00', 1, 'Gaming Handheld'),
+(112, 'Framework Laptop 16 (DIY Edition)', 'FWL16-DIY-HX', 'Framework', '16-inch Modular Laptop, Intel Core i7 HX-Series or AMD Ryzen, Upgradeable Graphics Module', 1399.00, 12, '2023-12-01 00:00:00', 9, 'Laptop'),
+(113, 'Sony DualSense Edge Wireless Controller', 'CFI-ZCP1W', 'Sony', 'High-Performance Customizable PS5 Controller with Swappable Components', 199.99, 40, '2023-01-26 00:00:00', 7, 'Accessory'),
+(114, 'Apple Vision Pro', 'VisionPro-256GB', 'Apple', 'Spatial Computer with micro-OLED displays, M2 and R1 chips, 256GB Storage', 3499.00, 5, '2024-02-02 00:00:00', 7, 'Accessory'), -- VR/AR Headset
+(115, 'TerraMaster F4-423 NAS', 'F4-423', 'TerraMaster', '4-Bay High Performance NAS for SMB, Intel Celeron N5095, Dual 2.5GbE', 499.99, 18, '2022-03-01 00:00:00', 13, 'External Storage (HDD/SSD)'),
+(116, 'NVIDIA RTX 4070 Ti SUPER Founders Edition', 'RTX4070TiS-FE', 'NVIDIA', 'High-Performance Gaming Graphics Card, 16GB GDDR6X', 799.00, 14, '2024-01-24 00:00:00', 9, 'Laptop Components'),
+(117, 'Refurbished HP Spectre x360 16 (2022)', 'SpectreX360-16-R', 'HP', 'Refurbished 16-inch 2-in-1 OLED Laptop, Intel Core i7, 16GB RAM, 1TB SSD', 1299.00, 8, '2022-09-01 00:00:00', 10, 'Used & Refurbished Laptops'),
+(118, 'Anker 747 GaNPrime Charger (150W)', 'A2340', 'Anker', '4-Port USB C GaN Charger, 3 USB-C, 1 USB-A, for Laptops, Phones, Tablets', 109.99, 25, '2022-07-25 00:00:00', 12, 'Docking Stations'), -- Charger, fits here
+(119, 'SK hynix Platinum P41 2TB NVMe SSD', 'SHPP41-2000GM-2', 'SK hynix', '2TB PCIe Gen4 NVMe M.2 Internal SSD, Up to 7,000MB/s Read', 149.99, 30, '2022-05-24 00:00:00', 9, 'Laptop Components'),
+(120, 'Das Keyboard 6 Professional Mechanical Keyboard', 'DKP6-PBT-MXBN', 'Das Keyboard', 'Full-Size Mechanical Keyboard, Cherry MX Brown Switches, PBT Keycaps', 199.00, 20, '2022-11-01 00:00:00', 14, 'Keyboards & Mice (External)');
+
+-- Dữ liệu cho đơn hàng mới (tiếp tục từ Order ID 76)
+-- Order 76: customer_id=86, 1 product (product_id=111, ROG Ally X, price 799.99)
+-- Net: 799.99, Tax: 80.00, Total: 879.99
+-- Order 77: customer_id=88, 2 products (product_id=112, Framework Laptop 16, price 1399.00; product_id=113, DualSense Edge, price 199.99)
+-- Net: 1399.00 + 199.99 = 1598.99, Tax: 159.90, Total: 1758.89
+-- Order 78: customer_id=60, 1 product (product_id=114, Apple Vision Pro, price 3499.00)
+-- Net: 3499.00, Tax: 349.90, Total: 3848.90
+-- Order 79: customer_id=92, 2 products (product_id=115, TerraMaster NAS, price 499.99; product_id=105, Synology DS923+, price 599.99)
+-- Net: 499.99 + 599.99 = 1099.98, Tax: 110.00, Total: 1209.98
+-- Order 80: customer_id=95, 1 product (product_id=117, Used Spectre x360 16, price 1299.00)
+-- Net: 1299.00, Tax: 129.90, Total: 1428.90
+-- Order 81: customer_id=25, 1 product (product_id=120, Das Keyboard 6 Pro, price 199.00)
+-- Net: 199.00, Tax: 19.90, Total: 218.90
+-- Order 82: customer_id=100, 2 products (product_id=116, RTX 4070 Ti SUPER, price 799.00; product_id=118, Anker 747 Charger, price 109.99)
+-- Net: 799.00 + 109.99 = 908.99, Tax: 90.90, Total: 999.89
+
+-- Bảng PAYMENTS (Tiếp tục từ ID 76, khớp với các Order mới ở trên)
+INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES
+(76, 56, '2024-04-24 09:00:00', 'Credit Card', 879.99, 'Completed', 'Order #76, ASUS ROG Ally X Handheld'),
+(77, 58, '2024-04-24 10:30:00', 'Bank Transfer', 1758.89, 'Completed', 'Order #77, Framework Laptop 16 + DualSense Edge'),
+(78, 60, '2024-04-25 11:15:00', 'PayPal', 3848.90, 'Completed', 'Order #78, Apple Vision Pro, High Value Item'),
+(79, 35, '2024-04-25 14:00:00', 'Credit Card', 1209.98, 'Processing', 'Order #79, Dual NAS units, confirm use case'),
+(80, 37, '2024-04-26 09:45:00', 'Debit Card', 1428.90, 'Completed', 'Order #80, Refurbished HP Spectre x360 16'),
+(81, 39, '2024-04-27 10:30:00', 'Credit Card', 218.90, 'Completed', 'Order #81, Das Keyboard 6 Professional'),
+(82, 41, '2024-04-27 15:00:00', 'PayPal', 999.89, 'Completed', 'Order #82, NVIDIA GPU + Anker Charger');
+
+-- Bảng ORDERS (Tiếp tục từ ID 76)
+INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES
+(76, 86, 76, '2024-04-24', 'Shipped', 799.99, 80.00, 879.99, '5656 Polygon Plaza, Render City', 'Gaming handheld, new release.'),
+(77, 88, 77, '2024-04-24', 'Processing', 1598.99, 159.90, 1758.89, '5858 Soundwave Studio, Mic Booth', 'Modular laptop, ensure all selected components included.'),
+(78, 60, 78, '2024-04-25', 'Shipped', 3499.00, 349.90, 3848.90, '3030 Robot Ave, MechWorld', 'Apple Vision Pro, requires adult signature and ID.'),
+(79, 92, 79, '2024-04-25', 'Awaiting Stock for TerraMaster', 1099.98, 110.00, 1209.98, '6262 Playback Plaza, Streamer Hub', 'TerraMaster NAS backordered, Synology available.'),
+(80, 95, 80, '2024-04-26', 'Shipped', 1299.00, 129.90, 1428.90, '6565 Generative Way, Model City', 'Refurbished Spectre, full accessories and warranty.'),
+(81, 25, 81, '2024-04-27', 'Delivered', 199.00, 19.90, 218.90, '909 Mars Colony, Solar System', NULL),
+(82, 100, 82, '2024-04-27', 'Processing', 908.99, 90.90, 999.89, '7070 Superposition Rd, Quantum Realm', 'GPU and charger, check power compatibility.');
+
+-- Bảng ORDER_DETAILS (Tiếp tục od_id, order_id tham chiếu đến các Order mới)
+INSERT INTO ORDER_DETAILS (order_id, product_id, quantity, unit_price) VALUES
+-- Order 76
+(76, 111, 1, 799.99), -- ASUS ROG Ally X
+-- Order 77
+(77, 112, 1, 1399.00),-- Framework Laptop 16
+(77, 113, 1, 199.99), -- Sony DualSense Edge
+-- Order 78
+(78, 114, 1, 3499.00),-- Apple Vision Pro
+-- Order 79
+(79, 115, 1, 499.99), -- TerraMaster F4-423 NAS
+(79, 105, 1, 599.99), -- Synology DiskStation DS923+ (ID từ lô trước)
+-- Order 80
+(80, 117, 1, 1299.00),-- Used HP Spectre x360 16
+-- Order 81
+(81, 120, 1, 199.00), -- Das Keyboard 6 Professional
+-- Order 82
+(82, 116, 1, 799.00), -- NVIDIA RTX 4070 Ti SUPER
+(82, 118, 1, 109.99); -- Anker 747 GaNPrime Charger
