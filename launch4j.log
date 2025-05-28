@@ -1460,3 +1460,40 @@ Launcher:	C:\Program Files\Java\jdk-17\bin\javaw.exe
 Launcher args:	-jar "C:\Users\Admin\IdeaProjects\LAp\LaptopStore.exe"
 Args length:	54/32768 chars
 Exit code:	0
+
+
+Version:	3.50
+CmdLine:	C:\Users\Admin\IdeaProjects\LAp\LaptopStore.exe --l4j-debug
+JNI:		No
+WOW64:		Yes
+Working dir:	C:\Users\Admin\IdeaProjects\LAp\.
+Requires JDK:	No
+Requires 64-Bit: No
+Java min ver:	1.017.000
+Java max ver:	
+Substitute:	EXEDIR = C:\Users\Admin\IdeaProjects\LAp
+JRE paths:	C:\Users\Admin\IdeaProjects\LAp\jre
+Check launcher:	C:\Users\Admin\IdeaProjects\LAp\jre\bin\javaw.exe (OK)
+Version string: 1.011.000_027 / 64-Bit (Ignore)
+64-bit search:	SOFTWARE\JavaSoft\Java Runtime Environment...
+32-bit search:	SOFTWARE\JavaSoft\Java Runtime Environment...
+Check:		SOFTWARE\JavaSoft\Java Runtime Environment\1.8
+Version string: 1.008.000 / 32-Bit (Ignore)
+Ignore:		1.008.000
+Check:		SOFTWARE\JavaSoft\Java Runtime Environment\1.8.0_441
+Version string: 1.008.000_441 / 32-Bit (Ignore)
+Ignore:		1.008.000_441
+64-bit search:	SOFTWARE\JavaSoft\Java Development Kit...
+32-bit search:	SOFTWARE\JavaSoft\Java Development Kit...
+64-bit search:	SOFTWARE\JavaSoft\JRE...
+32-bit search:	SOFTWARE\JavaSoft\JRE...
+64-bit search:	SOFTWARE\JavaSoft\JDK...
+Check:		SOFTWARE\JavaSoft\JDK\17.0.12
+Version string: 1.017.000_012 / 64-Bit (OK)
+Check launcher:	C:\Program Files\Java\jdk-17\bin\javaw.exe (OK)
+Match:		1.017.000_012
+Runtime used:	1.017.000_012 (64-bit)
+Launcher:	C:\Program Files\Java\jdk-17\bin\javaw.exe
+Launcher args:	-jar "C:\Users\Admin\IdeaProjects\LAp\LaptopStore.exe"
+Args length:	54/32768 chars
+Exit code:	0
