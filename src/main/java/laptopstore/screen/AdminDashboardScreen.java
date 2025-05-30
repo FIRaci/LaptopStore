@@ -17,10 +17,11 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+// import java.time.format.DateTimeFormatter; // Không được sử dụng trực tiếp, có thể bỏ nếu không có chỗ nào khác dùng
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class AdminDashboardScreen {
@@ -38,8 +39,6 @@ public class AdminDashboardScreen {
 
     // --- Components chung ---
     private final SimpleDateFormat jxDatePickerFormatter = new SimpleDateFormat("dd/MM/yyyy");
-    private final DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private final DateTimeFormatter localDateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     // --- Tab Products ---
     private JTable productTable;
@@ -96,7 +95,7 @@ public class AdminDashboardScreen {
     private JComboBox<Product> orderItemProductCombo;
     private JTextField orderItemQuantityField;
     private List<OrderItem> tempOrderItems = new ArrayList<>();
-    private JLabel lblOrderTotalAmount; // Để hiển thị tổng tiền của đơn hàng đang tạo/sửa
+    private JLabel lblOrderTotalAmount;
 
 
     public AdminDashboardScreen() {
@@ -109,7 +108,7 @@ public class AdminDashboardScreen {
 
         frame = new JFrame("Laptop Store Admin Dashboard (JDBC)");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(1700, 1000); // Tăng kích thước
+        frame.setSize(1900, 1020); // Tăng kích thước một chút cho thoải mái
         frame.setLocationRelativeTo(null);
 
         tabPane = new JTabbedPane();
@@ -118,40 +117,71 @@ public class AdminDashboardScreen {
         createManageProductsTab();
         createManageCustomersTab();
         createManageEmployeesTab();
-        createPaymentHistoryTab();
+        createManagePaymentsTab(); // Đổi tên cho nhất quán với listener
         createManageOrdersTab();
+        createDynamicQueryTab();
+        createPredefinedQueriesTab(); // Đổi tên cho rõ ràng hơn
 
         frame.add(tabPane);
         loadInitialDataForAllTabs();
 
         tabPane.addChangeListener(e -> {
             int selectedIndex = tabPane.getSelectedIndex();
-            switch (selectedIndex) {
-                case 0: loadProductsData(); loadCategoriesForProductForm(); break;
-                case 1: loadCustomersData(); break;
-                case 2: loadEmployeesData(); break;
-                case 3: loadPaymentsData(); loadEmployeesForPaymentForm(); break;
-                case 4: loadOrdersData(); loadCustomersForOrderForm(); loadPaymentsForOrderForm(); loadProductsForOrderItemForm(); break;
+            if (selectedIndex < 0) return; // Guard clause
+            String selectedTitle = tabPane.getTitleAt(selectedIndex);
+
+            switch (selectedTitle) {
+                case "Manage Products":
+                    loadProductsData();
+                    loadCategoriesForProductForm(); // Cũng load product types
+                    break;
+                case "Manage Customers":
+                    loadCustomersData();
+                    break;
+                case "Manage Employees":
+                    loadEmployeesData();
+                    break;
+                case "Manage Payments":
+                    loadPaymentsData();
+                    loadEmployeesForPaymentForm();
+                    break;
+                case "Manage Orders":
+                    loadOrdersData();
+                    loadCustomersForOrderForm();
+                    loadPaymentsForOrderForm();
+                    loadProductsForOrderItemForm();
+                    break;
+                // "Dynamic Query" và "Predefined Queries" không cần load gì đặc biệt khi chuyển tab
+                // vì chúng tự quản lý dữ liệu của mình khi được khởi tạo hoặc khi người dùng tương tác.
             }
         });
     }
 
     private void loadInitialDataForAllTabs() {
-        // Tab Products
+        // Load data for CRUD tabs
         loadProductsData();
         loadCategoriesForProductForm();
-        // Tab Customers
         loadCustomersData();
-        // Tab Employees
         loadEmployeesData();
-        // Tab Payments
         loadPaymentsData();
         loadEmployeesForPaymentForm();
-        // Tab Orders
         loadOrdersData();
         loadCustomersForOrderForm();
-        loadPaymentsForOrderForm(); // Load payment cho JComboBox
-        loadProductsForOrderItemForm(); // Load product cho JComboBox thêm item
+        loadPaymentsForOrderForm();
+        loadProductsForOrderItemForm();
+        // Các tab query tự load data khi cần
+    }
+
+    private void createDynamicQueryTab() {
+        DynamicQueryTab dynamicQueryPanel = new DynamicQueryTab();
+        tabPane.addTab("Dynamic Query", UIManager.getIcon("FileView.hardDriveIcon"), dynamicQueryPanel, "Perform custom database queries");
+    }
+
+    private void createPredefinedQueriesTab() {
+        RandomQueryTab predefinedQueriesPanel = new RandomQueryTab(); // Sử dụng tên lớp RandomQueryTab
+        Icon queryIcon = UIManager.getIcon("Table.ascendingSortIcon");
+        if (queryIcon == null) queryIcon = UIManager.getIcon("FileView.detailsViewIcon");
+        tabPane.addTab("Predefined Queries", queryIcon, predefinedQueriesPanel, "Run common predefined queries and reports");
     }
 
     private void styleTable(JTable table) {
@@ -164,7 +194,7 @@ public class AdminDashboardScreen {
         header.setFont(new Font("Segoe UI", Font.BOLD, 14));
         header.setPreferredSize(new Dimension(0, 35));
         header.setOpaque(false);
-        header.setBackground(new Color(230, 230, 230)); // Màu nền header nhạt hơn
+        header.setBackground(new Color(230, 230, 230));
         ((DefaultTableCellRenderer) header.getDefaultRenderer()).setHorizontalAlignment(JLabel.CENTER);
         table.setAutoCreateRowSorter(true);
     }
@@ -181,7 +211,7 @@ public class AdminDashboardScreen {
         panel.add(label, gbc);
 
         gbc.gridx = 1;
-        gbc.gridy = yPos;
+        // gbc.gridy = yPos; // Không cần set lại gridy nếu dùng chung gbc
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 0.8;
@@ -203,25 +233,25 @@ public class AdminDashboardScreen {
         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(frame, message, title, messageType));
     }
 
-    private BigDecimal parseBigDecimal(String text, String fieldName) throws NumberFormatException {
+    private BigDecimal parseBigDecimal(String text, String fieldName) throws IllegalArgumentException {
         if (text == null || text.trim().isEmpty()) {
-            throw new NumberFormatException(fieldName + " không được để trống.");
+            throw new IllegalArgumentException(fieldName + " không được để trống.");
         }
         try {
-            return new BigDecimal(text.trim().replace(",", "")); // Loại bỏ dấu phẩy nếu có
+            return new BigDecimal(text.trim().replace(",", ""));
         } catch (NumberFormatException e) {
-            throw new NumberFormatException(fieldName + " phải là một số hợp lệ (ví dụ: 123456.78).");
+            throw new IllegalArgumentException(fieldName + " phải là một số hợp lệ (ví dụ: 123456.78).");
         }
     }
 
-    private int parseInt(String text, String fieldName) throws NumberFormatException {
+    private int parseInt(String text, String fieldName) throws IllegalArgumentException {
         if (text == null || text.trim().isEmpty()) {
-            throw new NumberFormatException(fieldName + " không được để trống.");
+            throw new IllegalArgumentException(fieldName + " không được để trống.");
         }
         try {
             return Integer.parseInt(text.trim());
         } catch (NumberFormatException e) {
-            throw new NumberFormatException(fieldName + " phải là một số nguyên hợp lệ.");
+            throw new IllegalArgumentException(fieldName + " phải là một số nguyên hợp lệ.");
         }
     }
 
@@ -236,7 +266,7 @@ public class AdminDashboardScreen {
 
     private LocalDateTime getLocalDateTimeFromPicker(JXDatePicker picker) {
         Date date = picker.getDate();
-        return (date != null) ? date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime().withHour(0).withMinute(0).withSecond(0).withNano(0) : null;
+        return (date != null) ? date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().atStartOfDay() : null;
     }
 
     private void setLocalDateTimeToPicker(JXDatePicker picker, LocalDateTime localDateTime) {
@@ -277,7 +307,6 @@ public class AdminDashboardScreen {
         JPanel productFormPanel = new JPanel(new GridBagLayout());
         productFormPanel.setBorder(BorderFactory.createTitledBorder("Product Details"));
         GridBagConstraints gbcForm = new GridBagConstraints();
-        gbcForm.insets = new Insets(5, 5, 5, 5);
 
         productIdFieldProd = new JTextField(5);
         productIdFieldProd.setEditable(false);
@@ -290,10 +319,10 @@ public class AdminDashboardScreen {
         JScrollPane descriptionScrollPane = new JScrollPane(descriptionAreaProd);
         priceFieldProd = new JTextField(15);
         stockFieldProd = new JTextField(10);
-        productTypeComboProd = new JComboBox<>(new String[]{"Laptop", "Gear", "Components", "Accessory", "Other"});
+        productTypeComboProd = new JComboBox<>();
         categoryComboProd = new JComboBox<>();
         publishDatePickerProd = new JXDatePicker();
-        publishDatePickerProd.setFormats(jxDatePickerFormatter); // Sử dụng SimpleDateFormat
+        publishDatePickerProd.setFormats(jxDatePickerFormatter);
         publishDatePickerProd.setPreferredSize(new Dimension(140, publishDatePickerProd.getPreferredSize().height));
 
         int y = 0;
@@ -329,15 +358,16 @@ public class AdminDashboardScreen {
         buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(clearButton);
 
-        gbcForm.gridx = 0; gbcForm.gridy = y; gbcForm.gridwidth = 2;
-        gbcForm.anchor = GridBagConstraints.NORTHEAST;
-        gbcForm.fill = GridBagConstraints.NONE;
-        gbcForm.weighty = 0;
-        gbcForm.insets = new Insets(15, 5, 5, 5);
-        productFormPanel.add(buttonPanelVertical, gbcForm);
+        GridBagConstraints gbcButtons = new GridBagConstraints();
+        gbcButtons.gridx = 0;
+        gbcButtons.gridy = y;
+        gbcButtons.gridwidth = 2;
+        gbcButtons.anchor = GridBagConstraints.CENTER;
+        gbcButtons.insets = new Insets(20, 5, 5, 5);
+        productFormPanel.add(buttonPanelVertical, gbcButtons);
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, productTableScrollPane, productFormPanel);
-        splitPane.setResizeWeight(0.70);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, productTableScrollPane, new JScrollPane(productFormPanel));
+        splitPane.setResizeWeight(0.65);
         productsPanel.add(splitPane, BorderLayout.CENTER);
 
         addButton.addActionListener(e -> addProductAction());
@@ -345,7 +375,7 @@ public class AdminDashboardScreen {
         deleteButton.addActionListener(e -> deleteProductAction());
         clearButton.addActionListener(e -> resetProductForm());
 
-        tabPane.addTab("Manage Products", productsPanel);
+        tabPane.addTab("Manage Products", UIManager.getIcon("FileView.computerIcon"), productsPanel, "Add, update, or delete products");
     }
 
     private void loadProductsData() {
@@ -385,6 +415,20 @@ public class AdminDashboardScreen {
             showAlert("Database Error", "Could not load categories: " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
+        try {
+            DynamicQueryDataStore dqds = new DynamicQueryDataStore();
+            List<String> types = dqds.getDistinctStringValues("PRODUCTS", "product_type");
+            productTypeComboProd.removeAllItems();
+            productTypeComboProd.addItem(null);
+            for (String type : types) {
+                if (type != null && !type.trim().isEmpty()) productTypeComboProd.addItem(type);
+            }
+            if (productTypeComboProd.getItemCount() > 0) {
+                productTypeComboProd.setSelectedIndex(0);
+            }
+        } catch (SQLException e) {
+            showAlert("Database Error", "Could not load product types: " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void populateProductForm(Product product) {
@@ -403,7 +447,7 @@ public class AdminDashboardScreen {
                 boolean categoryFound = false;
                 for (int i = 0; i < categoryComboProd.getItemCount(); i++) {
                     Category catItem = categoryComboProd.getItemAt(i);
-                    if (catItem != null && catItem.getCategoryId() == product.getCategoryId()) {
+                    if (catItem != null && Objects.equals(catItem.getCategoryId(), product.getCategoryId())) {
                         categoryComboProd.setSelectedItem(catItem);
                         categoryFound = true;
                         break;
@@ -427,8 +471,8 @@ public class AdminDashboardScreen {
             String productType = (String) productTypeComboProd.getSelectedItem();
             Category selectedCategory = (Category) categoryComboProd.getSelectedItem();
 
-            if (specificName.isEmpty() || model.isEmpty() || brand.isEmpty() || productType == null || productType.isEmpty()) {
-                showAlert("Input Error", "Product Name, Model, Brand, and Type are required.", JOptionPane.ERROR_MESSAGE); return;
+            if (specificName.isEmpty() || model.isEmpty() || brand.isEmpty()) {
+                showAlert("Input Error", "Product Name, Model, and Brand are required.", JOptionPane.ERROR_MESSAGE); return;
             }
 
             BigDecimal price = parseBigDecimal(priceFieldProd.getText(), "Price");
@@ -444,7 +488,6 @@ public class AdminDashboardScreen {
             Integer categoryId = (selectedCategory != null) ? selectedCategory.getCategoryId() : null;
 
             Product newProduct = new Product(0, specificName, model, brand, description, price, stock, publishDateTime, productType, categoryId);
-            if (selectedCategory != null) newProduct.setCategoryName(selectedCategory.getCategoryName()); // Gán tên category cho model
 
             Product addedProduct = productDb.addProduct(newProduct);
             if (addedProduct != null) {
@@ -454,8 +497,6 @@ public class AdminDashboardScreen {
             } else {
                 showAlert("Error", "Failed to add product to database.", JOptionPane.ERROR_MESSAGE);
             }
-        } catch (NumberFormatException ex) {
-            showAlert("Input Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
         } catch (IllegalArgumentException ex) {
             showAlert("Input Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
         } catch (SQLException ex) {
@@ -481,8 +522,8 @@ public class AdminDashboardScreen {
             String productType = (String) productTypeComboProd.getSelectedItem();
             Category selectedCategory = (Category) categoryComboProd.getSelectedItem();
 
-            if (specificName.isEmpty() || model.isEmpty() || brand.isEmpty() || productType == null || productType.isEmpty()) {
-                showAlert("Input Error", "Product Name, Model, Brand, and Type are required.", JOptionPane.ERROR_MESSAGE); return;
+            if (specificName.isEmpty() || model.isEmpty() || brand.isEmpty()) {
+                showAlert("Input Error", "Product Name, Model, and Brand are required.", JOptionPane.ERROR_MESSAGE); return;
             }
             BigDecimal price = parseBigDecimal(priceFieldProd.getText(), "Price");
             if (price.compareTo(BigDecimal.ZERO) < 0) {
@@ -505,12 +546,11 @@ public class AdminDashboardScreen {
             productToUpdate.setYearPublish(publishDateTime);
             productToUpdate.setProductType(productType);
             productToUpdate.setCategoryId(categoryId);
-            productToUpdate.setCategoryName((selectedCategory != null) ? selectedCategory.getCategoryName() : null);
 
             boolean success = productDb.updateProduct(productToUpdate);
             if (success) {
                 loadProductsData();
-                resetProductForm();
+                productTable.setRowSelectionInterval(selectedViewRow, selectedViewRow);
                 showAlert("Success", "Product updated successfully.", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 showAlert("Error", "Failed to update product (no changes or product not found).", JOptionPane.ERROR_MESSAGE);
@@ -547,8 +587,8 @@ public class AdminDashboardScreen {
                     showAlert("Error", "Failed to delete product (it might have already been deleted or does not exist).", JOptionPane.ERROR_MESSAGE);
                 }
             } catch (SQLException ex) {
-                if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().contains("constraint"))) { // PostgreSQL FK violation
-                    showAlert("Deletion Error", "Cannot delete product: It is referenced in existing orders.", JOptionPane.ERROR_MESSAGE);
+                if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("constraint"))) {
+                    showAlert("Deletion Error", "Cannot delete product: It is referenced in existing orders or other records.", JOptionPane.ERROR_MESSAGE);
                 } else {
                     showAlert("Database Error", "Error deleting product: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
                 }
@@ -580,7 +620,6 @@ public class AdminDashboardScreen {
         customerTableModel = new CustomerTableModel();
         customerTable = new JTable(customerTableModel);
         styleTable(customerTable);
-        // Căn lề cho Customer Table
         DefaultTableCellRenderer leftRendererCust = new DefaultTableCellRenderer(); leftRendererCust.setHorizontalAlignment(JLabel.LEFT);
         DefaultTableCellRenderer centerRendererCust = new DefaultTableCellRenderer(); centerRendererCust.setHorizontalAlignment(JLabel.CENTER);
         customerTable.getColumnModel().getColumn(0).setCellRenderer(centerRendererCust); // ID
@@ -588,7 +627,6 @@ public class AdminDashboardScreen {
         for(int i=1; i<customerTable.getColumnCount(); i++){
             if(i != 5 && i != 0) customerTable.getColumnModel().getColumn(i).setCellRenderer(leftRendererCust);
         }
-
 
         customerTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         customerTable.getSelectionModel().addListSelectionListener(e -> {
@@ -602,7 +640,6 @@ public class AdminDashboardScreen {
         JPanel customerFormPanel = new JPanel(new GridBagLayout());
         customerFormPanel.setBorder(BorderFactory.createTitledBorder("Customer Details"));
         GridBagConstraints gbcForm = new GridBagConstraints();
-        gbcForm.insets = new Insets(5, 5, 5, 5);
 
         custIdField = new JTextField(5);
         custIdField.setEditable(false);
@@ -610,7 +647,7 @@ public class AdminDashboardScreen {
         custEmailField = new JTextField(20);
         custFirstNameField = new JTextField(20);
         custLastNameField = new JTextField(20);
-        custGenderCombo = new JComboBox<>(new String[]{"Select...", "M", "F", "O"}); // O for Other
+        custGenderCombo = new JComboBox<>(new String[]{"Select...", "M", "F", "O"});
         custAddressField = new JTextField(20);
         custDateOfBirthPicker = new JXDatePicker();
         custDateOfBirthPicker.setFormats(jxDatePickerFormatter);
@@ -649,13 +686,13 @@ public class AdminDashboardScreen {
         buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(clearButton);
 
-        gbcForm.gridx = 0; gbcForm.gridy = y; gbcForm.gridwidth = 2;
-        gbcForm.anchor = GridBagConstraints.NORTHEAST; gbcForm.fill = GridBagConstraints.NONE;
-        gbcForm.weighty = 0; gbcForm.insets = new Insets(15, 5, 5, 5);
-        customerFormPanel.add(buttonPanelVertical, gbcForm);
+        GridBagConstraints gbcButtonsCust = new GridBagConstraints();
+        gbcButtonsCust.gridx = 0; gbcButtonsCust.gridy = y; gbcButtonsCust.gridwidth = 2;
+        gbcButtonsCust.anchor = GridBagConstraints.CENTER; gbcButtonsCust.insets = new Insets(20, 5, 5, 5);
+        customerFormPanel.add(buttonPanelVertical, gbcButtonsCust);
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, customerTableScrollPane, customerFormPanel);
-        splitPane.setResizeWeight(0.70);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, customerTableScrollPane, new JScrollPane(customerFormPanel));
+        splitPane.setResizeWeight(0.65);
         customersPanel.add(splitPane, BorderLayout.CENTER);
 
         addButton.addActionListener(e -> addCustomerAction());
@@ -663,7 +700,7 @@ public class AdminDashboardScreen {
         deleteButton.addActionListener(e -> deleteCustomerAction());
         clearButton.addActionListener(e -> resetCustomerForm());
 
-        tabPane.addTab("Manage Customers", customersPanel);
+        tabPane.addTab("Manage Customers", UIManager.getIcon("FileView.directoryIcon"), customersPanel, "Add, update, or delete customer information");
     }
 
     private void loadCustomersData() {
@@ -707,12 +744,11 @@ public class AdminDashboardScreen {
                 showAlert("Input Error", "Username, Email, First Name, and Last Name are required.", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            // Validate email format (simple check)
             if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
                 showAlert("Input Error", "Invalid email format.", JOptionPane.ERROR_MESSAGE); return;
             }
 
-            char gender = (genderStr != null && !genderStr.equals("Select...") && !genderStr.isEmpty()) ? genderStr.charAt(0) : '\0'; // '\0' for unspecified
+            char gender = (genderStr != null && !genderStr.equals("Select...") && !genderStr.isEmpty()) ? genderStr.charAt(0) : '\0';
 
             Customer newCustomer = new Customer(0, username, email, firstName, lastName, LocalDateTime.now(), gender, address, dob, phone);
 
@@ -727,7 +763,11 @@ public class AdminDashboardScreen {
         } catch (IllegalArgumentException ex) {
             showAlert("Input Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
         } catch (SQLException ex) {
-            showAlert("Database Error", "Error adding customer: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            if ("23505".equals(ex.getSQLState())) {
+                showAlert("Input Error", "Username or Email already exists.", JOptionPane.ERROR_MESSAGE);
+            } else {
+                showAlert("Database Error", "Error adding customer: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            }
             ex.printStackTrace();
         }
     }
@@ -768,12 +808,11 @@ public class AdminDashboardScreen {
             customerToUpdate.setAddress(address);
             customerToUpdate.setDateOfBirth(dob);
             customerToUpdate.setPhone(phone);
-            // customerToUpdate.setCreatedAt() không nên thay đổi ở đây
 
             boolean success = customerDb.updateCustomer(customerToUpdate);
             if (success) {
                 loadCustomersData();
-                resetCustomerForm();
+                customerTable.setRowSelectionInterval(selectedViewRow, selectedViewRow);
                 showAlert("Success", "Customer updated successfully.", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 showAlert("Error", "Failed to update customer.", JOptionPane.ERROR_MESSAGE);
@@ -781,7 +820,11 @@ public class AdminDashboardScreen {
         } catch (IllegalArgumentException ex) {
             showAlert("Input Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
         } catch (SQLException ex) {
-            showAlert("Database Error", "Error updating customer: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            if ("23505".equals(ex.getSQLState())) {
+                showAlert("Input Error", "Username or Email already exists for another customer.", JOptionPane.ERROR_MESSAGE);
+            } else {
+                showAlert("Database Error", "Error updating customer: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            }
             ex.printStackTrace();
         }
     }
@@ -810,8 +853,8 @@ public class AdminDashboardScreen {
                     showAlert("Error", "Failed to delete customer.", JOptionPane.ERROR_MESSAGE);
                 }
             } catch (SQLException ex) {
-                if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().contains("constraint"))) {
-                    showAlert("Deletion Error", "Cannot delete customer: They have existing orders.", JOptionPane.ERROR_MESSAGE);
+                if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("constraint"))) {
+                    showAlert("Deletion Error", "Cannot delete customer: They have existing orders or other related data.", JOptionPane.ERROR_MESSAGE);
                 } else {
                     showAlert("Database Error", "Error deleting customer: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
                 }
@@ -842,7 +885,6 @@ public class AdminDashboardScreen {
         employeeTableModel = new EmployeeTableModel();
         employeeTable = new JTable(employeeTableModel);
         styleTable(employeeTable);
-        // Căn lề cho Employee Table
         DefaultTableCellRenderer leftRendererEmp = new DefaultTableCellRenderer(); leftRendererEmp.setHorizontalAlignment(JLabel.LEFT);
         DefaultTableCellRenderer centerRendererEmp = new DefaultTableCellRenderer(); centerRendererEmp.setHorizontalAlignment(JLabel.CENTER);
         DefaultTableCellRenderer rightRendererEmp = new DefaultTableCellRenderer(); rightRendererEmp.setHorizontalAlignment(JLabel.RIGHT);
@@ -850,6 +892,9 @@ public class AdminDashboardScreen {
         employeeTable.getColumnModel().getColumn(5).setCellRenderer(centerRendererEmp); // Gender
         employeeTable.getColumnModel().getColumn(8).setCellRenderer(rightRendererEmp); // Salary
         employeeTable.getColumnModel().getColumn(10).setCellRenderer(centerRendererEmp); // Hire Date
+        for(int i=1; i<employeeTable.getColumnCount(); i++){
+            if(i != 0 && i != 5 && i != 8 && i != 10) employeeTable.getColumnModel().getColumn(i).setCellRenderer(leftRendererEmp);
+        }
 
         employeeTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         employeeTable.getSelectionModel().addListSelectionListener(e -> {
@@ -863,14 +908,13 @@ public class AdminDashboardScreen {
         JPanel employeeFormPanel = new JPanel(new GridBagLayout());
         employeeFormPanel.setBorder(BorderFactory.createTitledBorder("Employee Details"));
         GridBagConstraints gbcForm = new GridBagConstraints();
-        gbcForm.insets = new Insets(5, 5, 5, 5);
 
         empIdField = new JTextField(5);
         empIdField.setEditable(false);
         empFirstNameField = new JTextField(20);
         empLastNameField = new JTextField(20);
         empPhoneField = new JTextField(15);
-        empEmailField = new JTextField(20); // Thêm email field
+        empEmailField = new JTextField(20);
         empAddressField = new JTextField(20);
         empGenderCombo = new JComboBox<>(new String[]{"Select...", "M", "F", "O"});
         empBankNumberField = new JTextField(15);
@@ -916,13 +960,13 @@ public class AdminDashboardScreen {
         buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(clearButton);
 
-        gbcForm.gridx = 0; gbcForm.gridy = y; gbcForm.gridwidth = 2;
-        gbcForm.anchor = GridBagConstraints.NORTHEAST; gbcForm.fill = GridBagConstraints.NONE;
-        gbcForm.weighty = 0; gbcForm.insets = new Insets(15, 5, 5, 5);
-        employeeFormPanel.add(buttonPanelVertical, gbcForm);
+        GridBagConstraints gbcButtonsEmp = new GridBagConstraints();
+        gbcButtonsEmp.gridx = 0; gbcButtonsEmp.gridy = y; gbcButtonsEmp.gridwidth = 2;
+        gbcButtonsEmp.anchor = GridBagConstraints.CENTER; gbcButtonsEmp.insets = new Insets(20, 5, 5, 5);
+        employeeFormPanel.add(buttonPanelVertical, gbcButtonsEmp);
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, employeeTableScrollPane, employeeFormPanel);
-        splitPane.setResizeWeight(0.70);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, employeeTableScrollPane, new JScrollPane(employeeFormPanel));
+        splitPane.setResizeWeight(0.65);
         employeesPanel.add(splitPane, BorderLayout.CENTER);
 
         addButton.addActionListener(e -> addEmployeeAction());
@@ -930,7 +974,7 @@ public class AdminDashboardScreen {
         deleteButton.addActionListener(e -> deleteEmployeeAction());
         clearButton.addActionListener(e -> resetEmployeeForm());
 
-        tabPane.addTab("Manage Employees", employeesPanel);
+        tabPane.addTab("Manage Employees", UIManager.getIcon("Tree.openIcon"), employeesPanel, "Manage employee records");
     }
 
     private void loadEmployeesData() {
@@ -1002,7 +1046,11 @@ public class AdminDashboardScreen {
         } catch (IllegalArgumentException ex) {
             showAlert("Input Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
         } catch (SQLException ex) {
-            showAlert("Database Error", "Error adding employee: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            if ("23505".equals(ex.getSQLState())) {
+                showAlert("Input Error", "Email or Phone already exists for another employee.", JOptionPane.ERROR_MESSAGE);
+            } else {
+                showAlert("Database Error", "Error adding employee: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            }
             ex.printStackTrace();
         }
     }
@@ -1055,7 +1103,7 @@ public class AdminDashboardScreen {
             boolean success = employeeDb.updateEmployee(employeeToUpdate);
             if (success) {
                 loadEmployeesData();
-                resetEmployeeForm();
+                employeeTable.setRowSelectionInterval(selectedViewRow, selectedViewRow);
                 showAlert("Success", "Employee updated successfully.", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 showAlert("Error", "Failed to update employee.", JOptionPane.ERROR_MESSAGE);
@@ -1063,7 +1111,11 @@ public class AdminDashboardScreen {
         } catch (IllegalArgumentException ex) {
             showAlert("Input Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
         } catch (SQLException ex) {
-            showAlert("Database Error", "Error updating employee: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            if ("23505".equals(ex.getSQLState())) {
+                showAlert("Input Error", "Email or Phone already exists for another employee.", JOptionPane.ERROR_MESSAGE);
+            } else {
+                showAlert("Database Error", "Error updating employee: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            }
             ex.printStackTrace();
         }
     }
@@ -1092,7 +1144,7 @@ public class AdminDashboardScreen {
                     showAlert("Error", "Failed to delete employee.", JOptionPane.ERROR_MESSAGE);
                 }
             } catch (SQLException ex) {
-                if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().contains("constraint"))) {
+                if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("constraint"))) {
                     showAlert("Deletion Error", "Cannot delete employee: They are referenced in existing payments or other records.", JOptionPane.ERROR_MESSAGE);
                 } else {
                     showAlert("Database Error", "Error deleting employee: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
@@ -1119,18 +1171,20 @@ public class AdminDashboardScreen {
     }
     // --- KẾT THÚC TAB EMPLOYEES ---
 
-    // --- TAB PAYMENT HISTORY ---
-    private void createPaymentHistoryTab() {
+    // --- TAB MANAGE PAYMENTS ---
+    private void createManagePaymentsTab() { // Đổi tên từ createPaymentHistoryTab
         JPanel paymentsPanel = new JPanel(new BorderLayout(10, 10));
         paymentsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         paymentTableModel = new PaymentTableModel();
         paymentTable = new JTable(paymentTableModel);
         styleTable(paymentTable);
-        // Căn lề cho Payment Table
         DefaultTableCellRenderer centerRendererPay = new DefaultTableCellRenderer(); centerRendererPay.setHorizontalAlignment(JLabel.CENTER);
         DefaultTableCellRenderer rightRendererPay = new DefaultTableCellRenderer(); rightRendererPay.setHorizontalAlignment(JLabel.RIGHT);
+        DefaultTableCellRenderer leftRendererPay = new DefaultTableCellRenderer(); leftRendererPay.setHorizontalAlignment(JLabel.LEFT);
+
         paymentTable.getColumnModel().getColumn(0).setCellRenderer(centerRendererPay); // ID
+        paymentTable.getColumnModel().getColumn(1).setCellRenderer(leftRendererPay);   // Employee Name
         paymentTable.getColumnModel().getColumn(2).setCellRenderer(centerRendererPay); // Date
         paymentTable.getColumnModel().getColumn(3).setCellRenderer(rightRendererPay); // Amount
         paymentTable.getColumnModel().getColumn(4).setCellRenderer(centerRendererPay); // Method
@@ -1149,17 +1203,16 @@ public class AdminDashboardScreen {
         JPanel paymentFormPanel = new JPanel(new GridBagLayout());
         paymentFormPanel.setBorder(BorderFactory.createTitledBorder("Payment Details"));
         GridBagConstraints gbcForm = new GridBagConstraints();
-        gbcForm.insets = new Insets(5, 5, 5, 5);
 
         paymentIdField = new JTextField(5);
         paymentIdField.setEditable(false);
-        paymentEmployeeCombo = new JComboBox<>(); // Load sau
+        paymentEmployeeCombo = new JComboBox<>();
         paymentAmountField = new JTextField(15);
         paymentDatePicker = new JXDatePicker();
         paymentDatePicker.setFormats(jxDatePickerFormatter);
         paymentDatePicker.setPreferredSize(new Dimension(140, paymentDatePicker.getPreferredSize().height));
-        paymentMethodCombo = new JComboBox<>(new String[]{"Cash", "Credit Card", "Bank Transfer", "Momo", "Other"});
-        paymentStatusCombo = new JComboBox<>(new String[]{"Pending", "Paid", "Failed", "Refunded", "Cancelled"});
+        paymentMethodCombo = new JComboBox<>(new String[]{"Cash", "Credit Card", "Bank Transfer", "Momo", "PayPal", "Other"});
+        paymentStatusCombo = new JComboBox<>(new String[]{"Pending", "Completed", "Failed", "Refunded", "Cancelled"});
         paymentNotesArea = new JTextArea(2, 20);
         paymentNotesArea.setLineWrap(true);
         paymentNotesArea.setWrapStyleWord(true);
@@ -1197,13 +1250,13 @@ public class AdminDashboardScreen {
         buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(clearButton);
 
-        gbcForm.gridx = 0; gbcForm.gridy = y; gbcForm.gridwidth = 2;
-        gbcForm.anchor = GridBagConstraints.NORTHEAST; gbcForm.fill = GridBagConstraints.NONE;
-        gbcForm.weighty = 0; gbcForm.insets = new Insets(15, 5, 5, 5);
-        paymentFormPanel.add(buttonPanelVertical, gbcForm);
+        GridBagConstraints gbcButtonsPay = new GridBagConstraints();
+        gbcButtonsPay.gridx = 0; gbcButtonsPay.gridy = y; gbcButtonsPay.gridwidth = 2;
+        gbcButtonsPay.anchor = GridBagConstraints.CENTER; gbcButtonsPay.insets = new Insets(20, 5, 5, 5);
+        paymentFormPanel.add(buttonPanelVertical, gbcButtonsPay);
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, paymentTableScrollPane, paymentFormPanel);
-        splitPane.setResizeWeight(0.70);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, paymentTableScrollPane, new JScrollPane(paymentFormPanel));
+        splitPane.setResizeWeight(0.65);
         paymentsPanel.add(splitPane, BorderLayout.CENTER);
 
         addButton.addActionListener(e -> addPaymentAction());
@@ -1211,7 +1264,7 @@ public class AdminDashboardScreen {
         deleteButton.addActionListener(e -> deletePaymentAction());
         clearButton.addActionListener(e -> resetPaymentForm());
 
-        tabPane.addTab("Manage Payments", paymentsPanel); // Đổi tên tab
+        tabPane.addTab("Manage Payments", UIManager.getIcon("FileChooser.detailsViewIcon"), paymentsPanel, "View and manage payment records");
     }
 
     private void loadPaymentsData() {
@@ -1228,7 +1281,7 @@ public class AdminDashboardScreen {
         try {
             List<Employee> employees = employeeDb.getAllEmployees();
             paymentEmployeeCombo.removeAllItems();
-            paymentEmployeeCombo.addItem(null); // Cho phép không chọn employee (nếu CSDL cho phép employee_id NULL)
+            paymentEmployeeCombo.addItem(null);
             for (Employee emp : employees) {
                 paymentEmployeeCombo.addItem(emp);
             }
@@ -1237,7 +1290,7 @@ public class AdminDashboardScreen {
                 public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                     super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                     if (value instanceof Employee) {
-                        setText(((Employee) value).getFirstName() + " " + ((Employee) value).getLastName());
+                        setText(((Employee) value).getFirstName() + " " + ((Employee) value).getLastName() + " (ID: " + ((Employee) value).getEmployeeId() + ")");
                     } else {
                         setText("Select Employee (Optional)");
                     }
@@ -1286,17 +1339,19 @@ public class AdminDashboardScreen {
             String method = (String) paymentMethodCombo.getSelectedItem();
             String status = (String) paymentStatusCombo.getSelectedItem();
             LocalDateTime paymentDateTime = getLocalDateTimeFromPicker(paymentDatePicker);
+            if(paymentDateTime == null) paymentDateTime = LocalDateTime.now();
+
             String notes = paymentNotesArea.getText();
 
-            if (method == null || method.isEmpty() || status == null || status.isEmpty() || paymentDateTime == null) {
-                showAlert("Input Error", "Payment Date, Method, and Status are required.", JOptionPane.ERROR_MESSAGE); return;
+            if (method == null || method.isEmpty() || status == null || status.isEmpty()) {
+                showAlert("Input Error", "Payment Method and Status are required.", JOptionPane.ERROR_MESSAGE); return;
             }
             BigDecimal amount = parseBigDecimal(amountText, "Total Amount");
             if (amount.compareTo(BigDecimal.ZERO) < 0) {
                 showAlert("Input Error", "Total amount must be non-negative.", JOptionPane.ERROR_MESSAGE); return;
             }
 
-            int employeeId = (selectedEmployee != null) ? selectedEmployee.getEmployeeId() : 0; // 0 hoặc giá trị biểu thị NULL
+            int employeeId = (selectedEmployee != null) ? selectedEmployee.getEmployeeId() : 0;
 
             Payment newPayment = new Payment(0, employeeId, paymentDateTime, amount, method, status, notes);
 
@@ -1331,10 +1386,14 @@ public class AdminDashboardScreen {
             String method = (String) paymentMethodCombo.getSelectedItem();
             String status = (String) paymentStatusCombo.getSelectedItem();
             LocalDateTime paymentDateTime = getLocalDateTimeFromPicker(paymentDatePicker);
+            if(paymentDateTime == null && paymentToUpdate.getPaymentDate() == null) paymentDateTime = LocalDateTime.now();
+            else if (paymentDateTime == null) paymentDateTime = paymentToUpdate.getPaymentDate();
+
+
             String notes = paymentNotesArea.getText();
 
-            if (method == null || method.isEmpty() || status == null || status.isEmpty() || paymentDateTime == null) {
-                showAlert("Input Error", "Payment Date, Method, and Status are required.", JOptionPane.ERROR_MESSAGE); return;
+            if (method == null || method.isEmpty() || status == null || status.isEmpty()) {
+                showAlert("Input Error", "Payment Method and Status are required.", JOptionPane.ERROR_MESSAGE); return;
             }
             BigDecimal amount = parseBigDecimal(amountText, "Total Amount");
             if (amount.compareTo(BigDecimal.ZERO) < 0) {
@@ -1354,7 +1413,7 @@ public class AdminDashboardScreen {
             boolean success = paymentDb.updatePayment(paymentToUpdate);
             if (success) {
                 loadPaymentsData();
-                resetPaymentForm();
+                paymentTable.setRowSelectionInterval(selectedViewRow, selectedViewRow);
                 showAlert("Success", "Payment updated successfully.", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 showAlert("Error", "Failed to update payment.", JOptionPane.ERROR_MESSAGE);
@@ -1391,7 +1450,7 @@ public class AdminDashboardScreen {
                     showAlert("Error", "Failed to delete payment.", JOptionPane.ERROR_MESSAGE);
                 }
             } catch (SQLException ex) {
-                if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().contains("constraint"))) {
+                if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("constraint"))) {
                     showAlert("Deletion Error", "Cannot delete payment: It is referenced in existing orders.", JOptionPane.ERROR_MESSAGE);
                 } else {
                     showAlert("Database Error", "Error deleting payment: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
@@ -1418,16 +1477,17 @@ public class AdminDashboardScreen {
         JPanel ordersOuterPanel = new JPanel(new BorderLayout(10, 10));
         ordersOuterPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Panel chính cho bảng Orders và OrderItems (bên trái)
         JPanel leftPanel = new JPanel(new BorderLayout(5,5));
 
         orderTableModel = new OrderTableModel();
         orderTable = new JTable(orderTableModel);
         styleTable(orderTable);
-        // Căn lề cho Order Table
         DefaultTableCellRenderer centerRendererOrder = new DefaultTableCellRenderer(); centerRendererOrder.setHorizontalAlignment(JLabel.CENTER);
         DefaultTableCellRenderer rightRendererOrder = new DefaultTableCellRenderer(); rightRendererOrder.setHorizontalAlignment(JLabel.RIGHT);
+        DefaultTableCellRenderer leftRendererOrder = new DefaultTableCellRenderer(); leftRendererOrder.setHorizontalAlignment(JLabel.LEFT);
+
         orderTable.getColumnModel().getColumn(0).setCellRenderer(centerRendererOrder); // Order ID
+        orderTable.getColumnModel().getColumn(1).setCellRenderer(leftRendererOrder);   // Customer Name
         orderTable.getColumnModel().getColumn(2).setCellRenderer(centerRendererOrder); // Payment ID
         orderTable.getColumnModel().getColumn(3).setCellRenderer(centerRendererOrder); // Order Date
         orderTable.getColumnModel().getColumn(4).setCellRenderer(centerRendererOrder); // Status
@@ -1435,26 +1495,29 @@ public class AdminDashboardScreen {
         orderTable.getColumnModel().getColumn(6).setCellRenderer(rightRendererOrder); // Tax
         orderTable.getColumnModel().getColumn(7).setCellRenderer(rightRendererOrder); // Total
 
+
         orderTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         JScrollPane orderTableScrollPane = new JScrollPane(orderTable);
 
         orderItemTableModel = new OrderItemTableModel();
         orderItemTable = new JTable(orderItemTableModel);
         styleTable(orderItemTable);
-        // Căn lề cho OrderItem Table
         DefaultTableCellRenderer centerRendererItem = new DefaultTableCellRenderer(); centerRendererItem.setHorizontalAlignment(JLabel.CENTER);
         DefaultTableCellRenderer rightRendererItem = new DefaultTableCellRenderer(); rightRendererItem.setHorizontalAlignment(JLabel.RIGHT);
-        orderItemTable.getColumnModel().getColumn(0).setCellRenderer(centerRendererItem); // OD ID
+        DefaultTableCellRenderer leftRendererItem = new DefaultTableCellRenderer(); leftRendererItem.setHorizontalAlignment(JLabel.LEFT);
+
+        orderItemTable.getColumnModel().getColumn(0).setCellRenderer(centerRendererItem); // OrderDetail ID
+        orderItemTable.getColumnModel().getColumn(1).setCellRenderer(leftRendererItem);   // Product Name
         orderItemTable.getColumnModel().getColumn(2).setCellRenderer(centerRendererItem); // Qty
         orderItemTable.getColumnModel().getColumn(3).setCellRenderer(rightRendererItem); // Unit Price
         orderItemTable.getColumnModel().getColumn(4).setCellRenderer(rightRendererItem); // Item Total
 
 
         JScrollPane orderItemTableScrollPane = new JScrollPane(orderItemTable);
-        orderItemTableScrollPane.setPreferredSize(new Dimension(0, 200)); // Giới hạn chiều cao
+        orderItemTableScrollPane.setPreferredSize(new Dimension(0, 200));
 
         JSplitPane leftSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, orderTableScrollPane, orderItemTableScrollPane);
-        leftSplitPane.setResizeWeight(0.65); // Cho bảng Order nhiều không gian hơn
+        leftSplitPane.setResizeWeight(0.65);
         leftPanel.add(leftSplitPane, BorderLayout.CENTER);
 
         orderTable.getSelectionModel().addListSelectionListener(e -> {
@@ -1462,14 +1525,13 @@ public class AdminDashboardScreen {
                 int modelRow = orderTable.convertRowIndexToModel(orderTable.getSelectedRow());
                 Order selectedOrder = orderTableModel.getOrderAt(modelRow);
                 if (selectedOrder != null) {
-                    populateOrderFormWithSelectedOrder(selectedOrder); // Điền form chính
-                    // Load lại items cho order đã chọn
+                    populateOrderFormWithSelectedOrder(selectedOrder);
                     try {
                         Order orderWithDetails = orderDb.getOrderById(selectedOrder.getOrderId());
                         if (orderWithDetails != null) {
                             tempOrderItems.clear();
-                            tempOrderItems.addAll(orderWithDetails.getOrderItems()); // Dùng cho sửa
-                            orderItemTableModel.setItems(new ArrayList<>(tempOrderItems)); // Hiển thị bản sao
+                            tempOrderItems.addAll(orderWithDetails.getOrderItems());
+                            orderItemTableModel.setItems(new ArrayList<>(tempOrderItems));
                             updateTempOrderTotalLabel();
                         } else {
                             orderItemTableModel.clearItems();
@@ -1483,18 +1545,16 @@ public class AdminDashboardScreen {
                         updateTempOrderTotalLabel();
                     }
                 }
-            } else if (orderTable.getSelectedRow() == -1) { // Nếu không có dòng nào được chọn (ví dụ sau khi xóa hoặc clear)
+            } else if (orderTable.getSelectedRow() == -1) {
                 resetOrderFormAndItems();
             }
         });
 
 
-        // Panel Form Orders (bên phải)
         JPanel orderRightPanel = new JPanel(new BorderLayout(5,5));
         JPanel orderFormPanel = new JPanel(new GridBagLayout());
         orderFormPanel.setBorder(BorderFactory.createTitledBorder("Order Details"));
         GridBagConstraints gbcForm = new GridBagConstraints();
-        gbcForm.insets = new Insets(5, 5, 5, 5);
 
         orderIdField = new JTextField(5);
         orderIdField.setEditable(false);
@@ -1502,7 +1562,7 @@ public class AdminDashboardScreen {
         orderPaymentCombo = new JComboBox<>();
         orderDatePicker = new JXDatePicker();
         orderDatePicker.setFormats(jxDatePickerFormatter);
-        orderStatusCombo = new JComboBox<>(new String[]{"Pending", "Processing", "Shipped", "Delivered", "Cancelled", "Returned"});
+        orderStatusCombo = new JComboBox<>(new String[]{"Pending", "Processing", "Shipped", "Delivered", "Cancelled", "Returned", "Awaiting Payment", "Awaiting Stock"});
         orderShippingAddressField = new JTextField(25);
         orderNotesArea = new JTextArea(2, 25);
         orderNotesArea.setLineWrap(true);
@@ -1520,11 +1580,9 @@ public class AdminDashboardScreen {
 
         orderRightPanel.add(orderFormPanel, BorderLayout.NORTH);
 
-        // Panel thêm OrderItem
         JPanel addItemPanel = new JPanel(new GridBagLayout());
         addItemPanel.setBorder(BorderFactory.createTitledBorder("Add/Update Item to Current List"));
         GridBagConstraints gbcItem = new GridBagConstraints();
-        gbcItem.insets = new Insets(5,5,5,5);
 
         orderItemProductCombo = new JComboBox<>();
         orderItemQuantityField = new JTextField(5);
@@ -1537,10 +1595,13 @@ public class AdminDashboardScreen {
         addFormField(addItemPanel, gbcItem, "Product:", orderItemProductCombo, y++);
         addFormField(addItemPanel, gbcItem, "Quantity:", orderItemQuantityField, y++);
 
-        gbcItem.gridx = 0; gbcItem.gridy = y; gbcItem.gridwidth=1; gbcItem.anchor = GridBagConstraints.EAST;
-        addItemPanel.add(btnAddOrUpdateItemToList, gbcItem);
-        gbcItem.gridx = 1; gbcItem.gridy = y++; gbcItem.anchor = GridBagConstraints.WEST;
-        addItemPanel.add(btnRemoveItemFromList, gbcItem);
+        JPanel itemButtonFlowPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        itemButtonFlowPanel.add(btnAddOrUpdateItemToList);
+        itemButtonFlowPanel.add(btnRemoveItemFromList);
+
+        gbcItem.gridx = 0; gbcItem.gridy = y++; gbcItem.gridwidth=2; gbcItem.anchor = GridBagConstraints.CENTER;
+        addItemPanel.add(itemButtonFlowPanel, gbcItem);
+
 
         gbcItem.gridx = 0; gbcItem.gridy = y; gbcItem.gridwidth = 2; gbcItem.anchor = GridBagConstraints.CENTER;
         gbcItem.insets = new Insets(10,5,5,5);
@@ -1549,11 +1610,10 @@ public class AdminDashboardScreen {
         orderRightPanel.add(addItemPanel, BorderLayout.CENTER);
 
 
-        // Panel nút chính cho Order
         JPanel orderButtonPanel = new JPanel();
         orderButtonPanel.setLayout(new BoxLayout(orderButtonPanel, BoxLayout.Y_AXIS));
         JButton btnCreateOrder = new JButton("Create New Order with Items");
-        JButton btnUpdateOrder = new JButton("Save Changes to Order"); // Chỉ update thông tin chính của Order
+        JButton btnUpdateOrder = new JButton("Save Changes to Order");
         JButton btnDeleteOrder = new JButton("Delete Selected Order");
         JButton btnClearOrderForm = new JButton("Clear Form & Item List");
 
@@ -1575,11 +1635,10 @@ public class AdminDashboardScreen {
         orderRightPanel.add(southButtonContainer, BorderLayout.SOUTH);
 
 
-        JSplitPane mainOrderSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, orderRightPanel);
-        mainOrderSplitPane.setResizeWeight(0.60); // Cho phần bảng nhiều không gian hơn
+        JSplitPane mainOrderSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, new JScrollPane(orderRightPanel));
+        mainOrderSplitPane.setResizeWeight(0.60);
         ordersOuterPanel.add(mainOrderSplitPane, BorderLayout.CENTER);
 
-        // Action Listeners
         btnAddOrUpdateItemToList.addActionListener(e -> addOrUpdateOrderItemInTempListAction());
         btnRemoveItemFromList.addActionListener(e -> removeOrderItemFromTempListAction());
         btnCreateOrder.addActionListener(e -> addNewOrderAction());
@@ -1588,12 +1647,12 @@ public class AdminDashboardScreen {
         btnClearOrderForm.addActionListener(e -> resetOrderFormAndItems());
 
 
-        tabPane.addTab("Manage Orders", ordersOuterPanel);
+        tabPane.addTab("Manage Orders", UIManager.getIcon("Tree.leafIcon"), ordersOuterPanel, "Create, view, and manage customer orders");
     }
 
     private void loadOrdersData() {
         try {
-            List<Order> orders = orderDb.getAllOrders(); // getAllOrders đã JOIN để lấy customerName
+            List<Order> orders = orderDb.getAllOrders();
             orderTableModel.setOrders(orders);
         } catch (SQLException e) {
             showAlert("Database Error", "Could not load orders: " + e.getMessage(), JOptionPane.ERROR_MESSAGE);
@@ -1605,7 +1664,7 @@ public class AdminDashboardScreen {
         try {
             List<Customer> customers = customerDb.getAllCustomers();
             orderCustomerCombo.removeAllItems();
-            orderCustomerCombo.addItem(null); // Mục trống
+            orderCustomerCombo.addItem(null);
             for (Customer cust : customers) {
                 orderCustomerCombo.addItem(cust);
             }
@@ -1614,7 +1673,7 @@ public class AdminDashboardScreen {
                 public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                     super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                     if (value instanceof Customer) {
-                        setText(((Customer) value).getFirstName() + " " + ((Customer) value).getLastName());
+                        setText(((Customer) value).getFirstName() + " " + ((Customer) value).getLastName() + " (ID: " + ((Customer)value).getCustomerId() + ")");
                     } else {
                         setText("Select Customer...");
                     }
@@ -1629,9 +1688,9 @@ public class AdminDashboardScreen {
 
     private void loadPaymentsForOrderForm() {
         try {
-            List<Payment> payments = paymentDb.getAllPayments(); // Giả sử getAllPayments đã JOIN lấy employeeName
+            List<Payment> payments = paymentDb.getAllPayments();
             orderPaymentCombo.removeAllItems();
-            orderPaymentCombo.addItem(null); // Cho phép không chọn payment ban đầu
+            orderPaymentCombo.addItem(null);
             for (Payment p : payments) {
                 orderPaymentCombo.addItem(p);
             }
@@ -1656,9 +1715,9 @@ public class AdminDashboardScreen {
 
     private void loadProductsForOrderItemForm() {
         try {
-            List<Product> products = productDb.getAllProducts(); // Giả sử getAllProducts đã JOIN lấy categoryName
+            List<Product> products = productDb.getAllProducts();
             orderItemProductCombo.removeAllItems();
-            orderItemProductCombo.addItem(null); // Mục trống
+            orderItemProductCombo.addItem(null);
             for (Product p : products) {
                 orderItemProductCombo.addItem(p);
             }
@@ -1667,7 +1726,7 @@ public class AdminDashboardScreen {
                 public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                     super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                     if (value instanceof Product) {
-                        setText(((Product) value).getSpecificProductName() + " (ID: " + ((Product)value).getProductId() + ")");
+                        setText(((Product) value).getSpecificProductName() + " (ID: " + ((Product)value).getProductId() + ", Stock: " + ((Product)value).getStockQuantity() + ")");
                     } else {
                         setText("Select Product...");
                     }
@@ -1688,7 +1747,6 @@ public class AdminDashboardScreen {
             orderShippingAddressField.setText(order.getShippingAddress());
             orderNotesArea.setText(order.getNotes());
 
-            // Populate Customer ComboBox
             if (order.getCustomerId() > 0) {
                 boolean found = false;
                 for (int i = 0; i < orderCustomerCombo.getItemCount(); i++) {
@@ -1704,7 +1762,6 @@ public class AdminDashboardScreen {
                 if (orderCustomerCombo.getItemCount() > 0) orderCustomerCombo.setSelectedIndex(0);
             }
 
-            // Populate Payment ComboBox
             if (order.getPaymentId() > 0) {
                 boolean found = false;
                 for (int i = 0; i < orderPaymentCombo.getItemCount(); i++) {
@@ -1720,7 +1777,7 @@ public class AdminDashboardScreen {
                 if (orderPaymentCombo.getItemCount() > 0) orderPaymentCombo.setSelectedIndex(0);
             }
         } else {
-            resetOrderFormFields(); // Chỉ reset các field của order chính
+            resetOrderFormFields();
         }
     }
 
@@ -1740,40 +1797,44 @@ public class AdminDashboardScreen {
             if (quantity <= 0) {
                 showAlert("Input Error", "Item quantity must be greater than 0.", JOptionPane.ERROR_MESSAGE); return;
             }
-            if (quantity > selectedProduct.getStockQuantity()) {
-                showAlert("Input Error", "Quantity exceeds available stock ("+ selectedProduct.getStockQuantity() +").", JOptionPane.WARNING_MESSAGE);
-                // Không return, cho phép thêm nhưng với số lượng bằng stock
-                // quantity = selectedProduct.getStockQuantity();
-                // orderItemQuantityField.setText(String.valueOf(quantity));
-                // if(quantity <=0) return; // Nếu stock = 0 thì không cho thêm
-                return; // Hoặc đơn giản là không cho phép nếu vượt quá
-            }
-
 
             Optional<OrderItem> existingItemOpt = tempOrderItems.stream()
                     .filter(item -> item.getProductId() == selectedProduct.getProductId())
                     .findFirst();
 
-            if (existingItemOpt.isPresent()) { // Update existing item in temp list
+            int quantityToAddOrUpdate = quantity;
+
+            if (existingItemOpt.isPresent()) {
+                if (quantity > selectedProduct.getStockQuantity()) {
+                    showAlert("Stock Error", "Total desired quantity (" + quantity + ") for " + selectedProduct.getSpecificProductName() + " exceeds available stock ("+ selectedProduct.getStockQuantity() +").", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            } else {
+                if (quantity > selectedProduct.getStockQuantity()) {
+                    showAlert("Stock Error", "Quantity (" + quantity + ") for " + selectedProduct.getSpecificProductName() + " exceeds available stock ("+ selectedProduct.getStockQuantity() +").", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
+
+
+            if (existingItemOpt.isPresent()) {
                 OrderItem existingItem = existingItemOpt.get();
-                existingItem.setQuantity(quantity);
-                existingItem.setUnitPrice(selectedProduct.getPrice()); // Luôn cập nhật giá mới nhất từ Product
+                existingItem.setQuantity(quantityToAddOrUpdate);
+                existingItem.setUnitPrice(selectedProduct.getPrice());
                 existingItem.setProductName(selectedProduct.getSpecificProductName());
-            } else { // Add new item to temp list
-                // odId và orderId sẽ là 0 hoặc sẽ được gán khi lưu Order chính
-                OrderItem newItem = new OrderItem(0, 0, selectedProduct.getProductId(), quantity, selectedProduct.getPrice());
+            } else {
+                OrderItem newItem = new OrderItem(0, 0, selectedProduct.getProductId(), quantityToAddOrUpdate, selectedProduct.getPrice());
                 newItem.setProductName(selectedProduct.getSpecificProductName());
                 tempOrderItems.add(newItem);
             }
 
-            orderItemTableModel.setItems(new ArrayList<>(tempOrderItems)); // Hiển thị bản sao
+            orderItemTableModel.setItems(new ArrayList<>(tempOrderItems));
             updateTempOrderTotalLabel();
 
-            // Reset item form
             if(orderItemProductCombo.getItemCount() > 0) orderItemProductCombo.setSelectedIndex(0);
             orderItemQuantityField.setText("");
 
-        } catch (NumberFormatException ex) {
+        } catch (IllegalArgumentException ex) {
             showAlert("Input Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -1791,23 +1852,26 @@ public class AdminDashboardScreen {
     }
 
     private void updateTempOrderTotalLabel() {
-        BigDecimal currentTotal = BigDecimal.ZERO;
+        BigDecimal currentNetTotal = BigDecimal.ZERO;
         for (OrderItem item : tempOrderItems) {
             if (item.getUnitPrice() != null && item.getQuantity() > 0) {
-                currentTotal = currentTotal.add(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+                currentNetTotal = currentNetTotal.add(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
             }
         }
-        // Giả sử thuế 10%
-        BigDecimal tax = currentTotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal finalTotal = currentTotal.add(tax);
-        lblOrderTotalAmount.setText("Current Order Total: " + finalTotal.toPlainString() + " VNĐ (Net: " + currentTotal.toPlainString() + ", Tax: " + tax.toPlainString() +")");
+        BigDecimal taxRate = new BigDecimal("0.10");
+        BigDecimal taxAmount = currentNetTotal.multiply(taxRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal finalTotalWithTax = currentNetTotal.add(taxAmount);
+
+        lblOrderTotalAmount.setText(String.format("Order Total: %,.2f VNĐ (Net: %,.2f, Tax: %,.2f)", finalTotalWithTax, currentNetTotal, taxAmount));
     }
 
 
     private void addNewOrderAction() {
         Customer selectedCustomer = (Customer) orderCustomerCombo.getSelectedItem();
-        Payment selectedPayment = (Payment) orderPaymentCombo.getSelectedItem(); // Có thể null
+        Payment selectedPayment = (Payment) orderPaymentCombo.getSelectedItem();
         LocalDate orderDate = getLocalDateFromPicker(orderDatePicker);
+        if(orderDate == null) orderDate = LocalDate.now();
+
         String status = (String) orderStatusCombo.getSelectedItem();
         String shippingAddress = orderShippingAddressField.getText().trim();
         String notes = orderNotesArea.getText().trim();
@@ -1816,32 +1880,28 @@ public class AdminDashboardScreen {
         if (selectedCustomer == null) {
             showAlert("Input Error", "Please select a customer.", JOptionPane.ERROR_MESSAGE); return;
         }
-        if (orderDate == null) {
-            showAlert("Input Error", "Please select an order date.", JOptionPane.ERROR_MESSAGE); return;
-        }
         if (status == null || status.isEmpty()) {
             showAlert("Input Error", "Please select an order status.", JOptionPane.ERROR_MESSAGE); return;
         }
         if (tempOrderItems.isEmpty()) {
-            showAlert("Input Error", "Order must have at least one item. Please add items to the list.", JOptionPane.ERROR_MESSAGE); return;
+            showAlert("Input Error", "Order must have at least one item in the list.", JOptionPane.ERROR_MESSAGE); return;
         }
 
         try {
-            Order newOrder = new Order(); // Dùng constructor rỗng
+            Order newOrder = new Order();
             newOrder.setCustomerId(selectedCustomer.getCustomerId());
-            newOrder.setPaymentId(selectedPayment != null ? selectedPayment.getPaymentId() : 0); // 0 nếu không có payment
+            newOrder.setPaymentId(selectedPayment != null ? selectedPayment.getPaymentId() : 0);
             newOrder.setOrderDate(orderDate);
             newOrder.setStatus(status);
-            newOrder.setShippingAddress(shippingAddress);
+            newOrder.setShippingAddress(shippingAddress.isEmpty() ? selectedCustomer.getAddress() : shippingAddress);
             newOrder.setNotes(notes);
-
-            // Gán danh sách item đã được chuẩn bị
-            newOrder.setOrderItems(new ArrayList<>(tempOrderItems)); // Gán bản sao
-            // newOrder.calculateAndSetTotals(); // Đã gọi trong OrderDataStore.addOrder
+            newOrder.setOrderItems(new ArrayList<>(tempOrderItems));
 
             Order addedOrder = orderDb.addOrder(newOrder);
             if (addedOrder != null) {
-                loadOrdersData(); // Load lại để có tên customer, ...
+                loadOrdersData();
+                loadProductsData();
+                loadProductsForOrderItemForm();
                 resetOrderFormAndItems();
                 showAlert("Success", "New order created successfully with ID: " + addedOrder.getOrderId(), JOptionPane.INFORMATION_MESSAGE);
             } else {
@@ -1850,7 +1910,11 @@ public class AdminDashboardScreen {
         } catch (IllegalArgumentException ex) {
             showAlert("Input Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
         } catch (SQLException ex) {
-            showAlert("Database Error", "Error creating new order: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("insufficient stock")) {
+                showAlert("Stock Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            } else {
+                showAlert("Database Error", "Error creating new order: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            }
             ex.printStackTrace();
         }
     }
@@ -1867,48 +1931,58 @@ public class AdminDashboardScreen {
         Customer selectedCustomer = (Customer) orderCustomerCombo.getSelectedItem();
         Payment selectedPayment = (Payment) orderPaymentCombo.getSelectedItem();
         LocalDate orderDate = getLocalDateFromPicker(orderDatePicker);
+        if(orderDate == null) orderDate = orderToUpdate.getOrderDate();
+
         String status = (String) orderStatusCombo.getSelectedItem();
         String shippingAddress = orderShippingAddressField.getText().trim();
         String notes = orderNotesArea.getText().trim();
 
-        if (selectedCustomer == null || orderDate == null || status == null || status.isEmpty()) {
-            showAlert("Input Error", "Customer, Order Date, and Status are required.", JOptionPane.ERROR_MESSAGE); return;
+        if (selectedCustomer == null || status == null || status.isEmpty()) {
+            showAlert("Input Error", "Customer and Status are required.", JOptionPane.ERROR_MESSAGE); return;
         }
-        // Không cần kiểm tra tempOrderItems.isEmpty() ở đây vì updateOrder của DataStore
-        // có thể chỉ cập nhật thông tin chính của Order. Nếu muốn đồng bộ items, logic đó nằm ở DataStore.
+        if (tempOrderItems.isEmpty() && !status.equals("Cancelled") && !status.equals("Returned")) {
+            showAlert("Input Error", "Order must have at least one item unless being cancelled/returned.", JOptionPane.ERROR_MESSAGE); return;
+        }
+
 
         try {
-            orderToUpdate.setCustomerId(selectedCustomer.getCustomerId());
-            orderToUpdate.setPaymentId(selectedPayment != null ? selectedPayment.getPaymentId() : 0);
-            orderToUpdate.setOrderDate(orderDate);
-            orderToUpdate.setStatus(status);
-            orderToUpdate.setShippingAddress(shippingAddress);
-            orderToUpdate.setNotes(notes);
+            Order originalOrderWithItems = orderDb.getOrderById(orderToUpdate.getOrderId());
+            List<OrderItem> originalItems = (originalOrderWithItems != null) ? new ArrayList<>(originalOrderWithItems.getOrderItems()) : new ArrayList<>();
 
-            // QUAN TRỌNG: Gán danh sách item hiện tại từ form (tempOrderItems) vào orderToUpdate.
-            // OrderDataStore.updateOrder() PHẢI có logic để xóa các order_details cũ và thêm lại các item mới này.
-            // Nếu OrderDataStore.updateOrder() không làm điều này, thì các thay đổi item sẽ không được lưu.
-            orderToUpdate.setOrderItems(new ArrayList<>(tempOrderItems)); // Gán bản sao
-            // orderToUpdate.calculateAndSetTotals(); // Đã gọi trong OrderDataStore.updateOrder (nếu có)
 
-            boolean success = orderDb.updateOrder(orderToUpdate);
+            Order updatedOrderData = new Order();
+            updatedOrderData.setOrderId(orderToUpdate.getOrderId());
+            updatedOrderData.setCustomerId(selectedCustomer.getCustomerId());
+            updatedOrderData.setPaymentId(selectedPayment != null ? selectedPayment.getPaymentId() : 0);
+            updatedOrderData.setOrderDate(orderDate);
+            updatedOrderData.setStatus(status);
+            updatedOrderData.setShippingAddress(shippingAddress.isEmpty() ? selectedCustomer.getAddress() : shippingAddress);
+            updatedOrderData.setNotes(notes);
+            updatedOrderData.setOrderItems(new ArrayList<>(tempOrderItems));
+
+            boolean success = orderDb.updateOrder(updatedOrderData, originalItems);
             if (success) {
-                loadOrdersData(); // Load lại để thấy tên customer, và có thể cả items nếu DataStore hỗ trợ
-                // Sau khi loadOrdersData, orderTable sẽ được cập nhật.
-                // Tìm lại dòng đã chọn và chọn lại nó (nếu ID không đổi)
+                loadOrdersData();
+                loadProductsData();
+                loadProductsForOrderItemForm();
+
                 for(int i=0; i < orderTableModel.getRowCount(); i++){
-                    if(orderTableModel.getOrderAt(i).getOrderId() == orderToUpdate.getOrderId()){
-                        orderTable.setRowSelectionInterval(orderTable.convertRowIndexToView(i), orderTable.convertRowIndexToView(i));
-                        // Kích hoạt lại việc load items cho dòng được chọn
-                        Order reSelectedOrder = orderTableModel.getOrderAt(i);
-                        if (reSelectedOrder != null) {
-                            try {
-                                Order orderWithDetails = orderDb.getOrderById(reSelectedOrder.getOrderId());
-                                if(orderWithDetails != null) {
-                                    orderItemTableModel.setItems(new ArrayList<>(orderWithDetails.getOrderItems()));
-                                    updateTempOrderTotalLabel();
-                                }
-                            } catch (SQLException ex) { /*ignore*/ }
+                    if(orderTableModel.getOrderAt(i).getOrderId() == updatedOrderData.getOrderId()){
+                        int viewRowToReselect = orderTable.convertRowIndexToView(i);
+                        if (viewRowToReselect != -1) {
+                            orderTable.setRowSelectionInterval(viewRowToReselect, viewRowToReselect);
+                            Order reSelectedOrder = orderTableModel.getOrderAt(i);
+                            if (reSelectedOrder != null) {
+                                try {
+                                    Order orderWithDetails = orderDb.getOrderById(reSelectedOrder.getOrderId());
+                                    if(orderWithDetails != null) {
+                                        tempOrderItems.clear();
+                                        tempOrderItems.addAll(orderWithDetails.getOrderItems());
+                                        orderItemTableModel.setItems(new ArrayList<>(tempOrderItems));
+                                        updateTempOrderTotalLabel();
+                                    }
+                                } catch (SQLException ex_ignored) { /* ignore */ }
+                            }
                         }
                         break;
                     }
@@ -1920,7 +1994,11 @@ public class AdminDashboardScreen {
         } catch (IllegalArgumentException ex) {
             showAlert("Input Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
         } catch (SQLException ex) {
-            showAlert("Database Error", "Error updating order: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("insufficient stock")) {
+                showAlert("Stock Error", ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            } else {
+                showAlert("Database Error", "Error updating order: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+            }
             ex.printStackTrace();
         }
     }
@@ -1935,7 +2013,7 @@ public class AdminDashboardScreen {
         if (orderToDelete == null) return;
 
         int confirmation = JOptionPane.showConfirmDialog(frame,
-                "Are you sure you want to delete Order ID: " + orderToDelete.getOrderId() + "?\nThis will also delete all associated order items.",
+                "Are you sure you want to delete Order ID: " + orderToDelete.getOrderId() + "?\nThis will also delete all associated order items and attempt to revert stock.",
                 "Confirm Deletion", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirmation == JOptionPane.YES_OPTION) {
@@ -1943,6 +2021,8 @@ public class AdminDashboardScreen {
                 boolean success = orderDb.deleteOrder(orderToDelete.getOrderId());
                 if (success) {
                     loadOrdersData();
+                    loadProductsData();
+                    loadProductsForOrderItemForm();
                     resetOrderFormAndItems();
                     showAlert("Success", "Order deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
                 } else {
@@ -1971,7 +2051,7 @@ public class AdminDashboardScreen {
         resetOrderFormFields();
         tempOrderItems.clear();
         orderItemTableModel.clearItems();
-        updateTempOrderTotalLabel(); // Reset label tổng tiền
+        updateTempOrderTotalLabel();
         orderTable.clearSelection();
     }
     // --- KẾT THÚC TAB ORDERS ---
@@ -1984,4 +2064,3 @@ public class AdminDashboardScreen {
         return frame;
     }
 }
-

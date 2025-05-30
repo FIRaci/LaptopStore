@@ -17,17 +17,39 @@ import java.util.List;
 
 public class ProductDataStore {
 
-    // Sử dụng constructor của Product đã được cập nhật để nhận các trường mới
+    // Helper method to clean currency string and convert to BigDecimal
+    private BigDecimal getBigDecimalFromMoneyString(ResultSet rs, String columnName) throws SQLException {
+        String moneyString = rs.getString(columnName);
+        if (moneyString == null) {
+            return null;
+        }
+        // Loại bỏ ký tự không phải số, ngoại trừ dấu chấm thập phân và dấu trừ (nếu có cho số âm)
+        // Cụ thể ở đây là loại bỏ dấu phẩy phân cách hàng nghìn.
+        // PostgreSQL MONEY type có thể trả về dạng có ký hiệu tiền tệ ở đầu, ví dụ '$1,234.56' hoặc '1.234,56 €' tùy locale.
+        // Cách làm an toàn nhất là chỉ giữ lại số và dấu chấm thập phân chuẩn.
+        String cleanedString = moneyString.replaceAll("[^\\d.-]", "").replace(",", "");
+        if (cleanedString.isEmpty()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(cleanedString);
+        } catch (NumberFormatException e) {
+            System.err.println("Error parsing BigDecimal from string: '" + moneyString + "' (cleaned: '" + cleanedString + "') for column: " + columnName);
+            throw new SQLException("Bad value for type BigDecimal after cleaning: " + moneyString, e);
+        }
+    }
+
     public Product addProduct(Product product) throws SQLException {
         if (product == null) throw new IllegalArgumentException("Product object cannot be null.");
         if (product.getSpecificProductName() == null || product.getSpecificProductName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Tên sản phẩm (specificProductName) không được để trống.");
+            throw new IllegalArgumentException("Product name (specificProductName) cannot be empty.");
         }
         if (product.getModel() == null || product.getModel().trim().isEmpty()) throw new IllegalArgumentException("Model is required.");
         if (product.getBrand() == null || product.getBrand().trim().isEmpty()) throw new IllegalArgumentException("Brand is required.");
-        if (product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("Price must be non-negative.");
+        if (product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Price must be a non-negative value.");
+        }
         if (product.getStockQuantity() < 0) throw new IllegalArgumentException("Stock quantity must be non-negative.");
-
 
         String sql = "INSERT INTO PRODUCTS (product_name, model, brand, description, price, stock_quantity, year_publish, product_type, category_id) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -38,7 +60,7 @@ public class ProductDataStore {
             pstmt.setString(2, product.getModel().trim());
             pstmt.setString(3, product.getBrand().trim());
             pstmt.setString(4, product.getDescription());
-            pstmt.setBigDecimal(5, product.getPrice()); // product.getPrice() đã là BigDecimal
+            pstmt.setBigDecimal(5, product.getPrice());
             pstmt.setInt(6, product.getStockQuantity());
 
             if (product.getYearPublish() != null) {
@@ -47,7 +69,7 @@ public class ProductDataStore {
                 pstmt.setNull(7, Types.TIMESTAMP);
             }
 
-            pstmt.setString(8, product.getProductType()); // product.getProductType()
+            pstmt.setString(8, product.getProductType());
 
             if (product.getCategoryId() != null && product.getCategoryId() > 0) {
                 pstmt.setInt(9, product.getCategoryId());
@@ -60,13 +82,12 @@ public class ProductDataStore {
                 try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
                         product.setProductId(generatedKeys.getInt(1));
-                        // Không cần set categoryName ở đây vì INSERT không trả về category_name
                         return product;
                     }
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi thêm sản phẩm: " + e.getMessage());
+            System.err.println("SQL Error when adding product: " + e.getMessage());
             throw e;
         }
         return null;
@@ -74,8 +95,7 @@ public class ProductDataStore {
 
     public boolean updateProduct(Product product) throws SQLException {
         if (product == null) throw new IllegalArgumentException("Product object cannot be null.");
-        if (product.getProductId() <= 0) throw new IllegalArgumentException("Product ID không hợp lệ để cập nhật.");
-        // Thêm validate tương tự addProduct
+        if (product.getProductId() <= 0) throw new IllegalArgumentException("Invalid Product ID for update.");
 
         String sql = "UPDATE PRODUCTS SET product_name = ?, model = ?, brand = ?, description = ?, price = ?, " +
                 "stock_quantity = ?, year_publish = ?, product_type = ?, category_id = ? " +
@@ -87,7 +107,7 @@ public class ProductDataStore {
             pstmt.setString(2, product.getModel().trim());
             pstmt.setString(3, product.getBrand().trim());
             pstmt.setString(4, product.getDescription());
-            pstmt.setBigDecimal(5, product.getPrice()); // product.getPrice() là BigDecimal
+            pstmt.setBigDecimal(5, product.getPrice());
             pstmt.setInt(6, product.getStockQuantity());
             if (product.getYearPublish() != null) {
                 pstmt.setTimestamp(7, Timestamp.valueOf(product.getYearPublish()));
@@ -104,13 +124,13 @@ public class ProductDataStore {
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi cập nhật sản phẩm: " + e.getMessage());
+            System.err.println("SQL Error when updating product: " + e.getMessage());
             throw e;
         }
     }
 
     public boolean deleteProduct(int productId) throws SQLException {
-        if (productId <= 0) throw new IllegalArgumentException("Product ID không hợp lệ để xóa.");
+        if (productId <= 0) throw new IllegalArgumentException("Invalid Product ID for deletion.");
         String sql = "DELETE FROM PRODUCTS WHERE product_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -118,9 +138,9 @@ public class ProductDataStore {
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             if ("23503".equals(e.getSQLState())) {
-                throw new SQLException("Không thể xóa sản phẩm ID " + productId + " vì nó đang được tham chiếu trong chi tiết đơn hàng.", e.getSQLState(), e);
+                throw new SQLException("Cannot delete product ID " + productId + " as it is referenced in order details.", e.getSQLState(), e);
             }
-            System.err.println("Lỗi SQL khi xóa sản phẩm ID " + productId + ": " + e.getMessage());
+            System.err.println("SQL Error when deleting product ID " + productId + ": " + e.getMessage());
             throw e;
         }
     }
@@ -140,7 +160,7 @@ public class ProductDataStore {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy sản phẩm theo ID " + productId + ": " + e.getMessage());
+            System.err.println("SQL Error when fetching product by ID " + productId + ": " + e.getMessage());
             throw e;
         }
         return product;
@@ -158,7 +178,7 @@ public class ProductDataStore {
                 products.add(mapRowToProduct(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy tất cả sản phẩm: " + e.getMessage());
+            System.err.println("SQL Error when fetching all products: " + e.getMessage());
             throw e;
         }
         return products;
@@ -179,7 +199,7 @@ public class ProductDataStore {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy sản phẩm theo loại '" + productType + "': " + e.getMessage());
+            System.err.println("SQL Error when fetching products by type '" + productType + "': " + e.getMessage());
             throw e;
         }
         return products;
@@ -189,7 +209,7 @@ public class ProductDataStore {
         if (categoryId <= 0) return new ArrayList<>();
         List<Product> products = new ArrayList<>();
         String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.product_type, p.category_id, c.category_name " +
-                "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " + // Dù lọc theo category_id, vẫn join để lấy tên cho nhất quán
+                "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
                 "WHERE p.category_id = ? ORDER BY p.product_name, p.product_id";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -200,7 +220,7 @@ public class ProductDataStore {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy sản phẩm theo category ID " + categoryId + ": " + e.getMessage());
+            System.err.println("SQL Error when fetching products by category ID " + categoryId + ": " + e.getMessage());
             throw e;
         }
         return products;
@@ -212,16 +232,19 @@ public class ProductDataStore {
         String model = rs.getString("model");
         String brand = rs.getString("brand");
         String description = rs.getString("description");
-        BigDecimal priceBd = rs.getBigDecimal("price"); // Lấy trực tiếp BigDecimal
+
+        // SỬA Ở ĐÂY: Đọc MONEY từ CSDL
+        BigDecimal priceBd = getBigDecimalFromMoneyString(rs, "price");
+
         int stockQuantity = rs.getInt("stock_quantity");
         Timestamp yearPublishTs = rs.getTimestamp("year_publish");
         LocalDateTime yearPublish = (yearPublishTs != null) ? yearPublishTs.toLocalDateTime() : null;
         String productType = rs.getString("product_type");
         Integer categoryId = rs.getObject("category_id", Integer.class);
-        String categoryName = rs.getString("category_name"); // Lấy từ JOIN
+        String categoryName = rs.getString("category_name");
 
         Product p = new Product(id, specificProductName, model, brand, description, priceBd, stockQuantity, yearPublish, productType, categoryId);
-        p.setCategoryName(categoryName); // Gán tên category
+        p.setCategoryName(categoryName);
 
         return p;
     }

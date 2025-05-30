@@ -36,13 +36,16 @@ public class CustomerDataStore {
 
             LocalDateTime createdAt = customer.getCreatedAt() != null ? customer.getCreatedAt() : LocalDateTime.now();
             pstmt.setTimestamp(5, Timestamp.valueOf(createdAt));
-            customer.setCreatedAt(createdAt); // Cập nhật lại vào model nếu nó được tạo là now()
+            // It's good practice to update the model object with the actual value used, especially if generated.
+            customer.setCreatedAt(createdAt);
 
             char gender = customer.getGender();
-            if (gender == 'M' || gender == 'F' || gender == 'O') {
+            if (gender == 'M' || gender == 'F' || gender == 'O') { // Assuming 'O' for Other is in your DB CHECK constraint
                 pstmt.setString(6, String.valueOf(gender));
             } else {
-                pstmt.setNull(6, Types.CHAR); // Hoặc giá trị mặc định nếu CSDL không cho phép NULL và không có default
+                // If gender is optional and can be NULL in DB
+                pstmt.setNull(6, Types.CHAR);
+                // Or throw new IllegalArgumentException("Invalid gender value: " + gender); if it's required
             }
 
             pstmt.setString(7, customer.getAddress());
@@ -67,12 +70,12 @@ public class CustomerDataStore {
         } catch (SQLException e) {
             if ("23505".equals(e.getSQLState())) { // UNIQUE constraint violation
                 if (e.getMessage().toLowerCase().contains("username")) {
-                    throw new SQLException("Username '" + customer.getUsername().trim() + "' đã tồn tại.", e.getSQLState(), e);
+                    throw new SQLException("Username '" + customer.getUsername().trim() + "' already exists.", e.getSQLState(), e);
                 } else if (e.getMessage().toLowerCase().contains("email")) {
-                    throw new SQLException("Email '" + customer.getEmail().trim() + "' đã tồn tại.", e.getSQLState(), e);
+                    throw new SQLException("Email '" + customer.getEmail().trim() + "' already exists.", e.getSQLState(), e);
                 }
             }
-            System.err.println("Lỗi SQL khi thêm khách hàng: " + e.getMessage());
+            System.err.println("SQL Error when adding customer: " + e.getMessage());
             throw e;
         }
         return null;
@@ -80,12 +83,12 @@ public class CustomerDataStore {
 
     public boolean updateCustomer(Customer customer) throws SQLException {
         if (customer == null) throw new IllegalArgumentException("Customer object cannot be null.");
-        if (customer.getCustomerId() <= 0) throw new IllegalArgumentException("Customer ID không hợp lệ để cập nhật.");
-        // Thêm validate tương tự như addCustomer
+        if (customer.getCustomerId() <= 0) throw new IllegalArgumentException("Invalid Customer ID for update.");
+        // Add similar validation for other required fields as in addCustomer
 
         String sql = "UPDATE CUSTOMERS SET username = ?, email = ?, first_name = ?, last_name = ?, " +
                 "gender = ?, address = ?, date_of_birth = ?, phone = ? " +
-                // Không nên cho phép cập nhật created_at từ UI, trừ khi có lý do đặc biệt
+                // created_at is typically not updated manually after creation
                 "WHERE customer_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -115,18 +118,20 @@ public class CustomerDataStore {
         } catch (SQLException e) {
             if ("23505".equals(e.getSQLState())) {
                 if (e.getMessage().toLowerCase().contains("username")) {
-                    throw new SQLException("Username '" + customer.getUsername().trim() + "' đã được sử dụng bởi khách hàng khác.", e.getSQLState(), e);
+                    throw new SQLException("Username '" + customer.getUsername().trim() + "' is already used by another customer.", e.getSQLState(), e);
                 } else if (e.getMessage().toLowerCase().contains("email")) {
-                    throw new SQLException("Email '" + customer.getEmail().trim() + "' đã được sử dụng bởi khách hàng khác.", e.getSQLState(), e);
+                    throw new SQLException("Email '" + customer.getEmail().trim() + "' is already used by another customer.", e.getSQLState(), e);
                 }
             }
-            System.err.println("Lỗi SQL khi cập nhật khách hàng: " + e.getMessage());
+            System.err.println("SQL Error when updating customer: " + e.getMessage());
             throw e;
         }
     }
 
     public boolean deleteCustomer(int customerId) throws SQLException {
-        if (customerId <= 0) throw new IllegalArgumentException("Customer ID không hợp lệ để xóa.");
+        if (customerId <= 0) throw new IllegalArgumentException("Invalid Customer ID for deletion.");
+        // The DB schema has ON DELETE RESTRICT for ORDERS referencing CUSTOMERS.
+        // So, an attempt to delete a customer with orders will fail at the DB level.
         String sql = "DELETE FROM CUSTOMERS WHERE customer_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -135,9 +140,9 @@ public class CustomerDataStore {
             return affectedRows > 0;
         } catch (SQLException e) {
             if ("23503".equals(e.getSQLState())) { // FK violation
-                throw new SQLException("Không thể xóa khách hàng ID " + customerId + " vì có đơn hàng hoặc dữ liệu liên quan khác.", e.getSQLState(), e);
+                throw new SQLException("Cannot delete customer ID " + customerId + " as they have existing orders or other related data.", e.getSQLState(), e);
             }
-            System.err.println("Lỗi SQL khi xóa khách hàng ID " + customerId + ": " + e.getMessage());
+            System.err.println("SQL Error when deleting customer ID " + customerId + ": " + e.getMessage());
             throw e;
         }
     }
@@ -155,7 +160,7 @@ public class CustomerDataStore {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy khách hàng theo ID " + customerId + ": " + e.getMessage());
+            System.err.println("SQL Error when fetching customer by ID " + customerId + ": " + e.getMessage());
             throw e;
         }
         return customer;
@@ -171,7 +176,7 @@ public class CustomerDataStore {
                 customers.add(mapRowToCustomer(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy tất cả khách hàng: " + e.getMessage());
+            System.err.println("SQL Error when fetching all customers: " + e.getMessage());
             throw e;
         }
         return customers;
@@ -187,6 +192,7 @@ public class CustomerDataStore {
         LocalDateTime createdAt = (createdAtTs != null) ? createdAtTs.toLocalDateTime() : null;
 
         String genderStr = rs.getString("gender");
+        // Handle potential null from DB for gender, map to null char if so.
         char gender = (genderStr != null && !genderStr.isEmpty()) ? genderStr.charAt(0) : '\0';
 
         String address = rs.getString("address");

@@ -1,7 +1,7 @@
 package laptopstore.data;
 
 import laptopstore.model.Category;
-import laptopstore.util.DatabaseConnection; // Đảm bảo import đúng lớp kết nối của bạn
+import laptopstore.util.DatabaseConnection;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -67,21 +67,6 @@ public class CategoryDataStore {
         if (categoryId <= 0) {
             throw new IllegalArgumentException("Category ID không hợp lệ để xóa.");
         }
-        // CSDL đã có ON DELETE SET NULL trên PRODUCTS.category_id,
-        // nhưng vẫn nên kiểm tra để thông báo thân thiện hơn nếu muốn.
-        // Hoặc nếu bạn muốn logic chặt chẽ hơn là không cho xóa nếu có sản phẩm:
-        /*
-        String checkProductSql = "SELECT COUNT(*) FROM PRODUCTS WHERE category_id = ?";
-        try (Connection connCheck = DatabaseConnection.getConnection();
-             PreparedStatement checkStmt = connCheck.prepareStatement(checkProductSql)) {
-            checkStmt.setInt(1, categoryId);
-            try (ResultSet rs = checkStmt.executeQuery()) {
-                if (rs.next() && rs.getInt(1) > 0) {
-                    throw new SQLException("Không thể xóa category ID " + categoryId + " vì nó đang được sử dụng bởi các sản phẩm.", "CATEGORY_IN_USE");
-                }
-            }
-        }
-        */
         String sql = "DELETE FROM CATEGORIES WHERE category_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -89,7 +74,6 @@ public class CategoryDataStore {
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            // "23503" là lỗi FK violation chung, có thể không phải do PRODUCTS nếu có bảng khác tham chiếu
             if ("23503".equals(e.getSQLState())) {
                 throw new SQLException("Không thể xóa category này vì có ràng buộc khóa ngoại (ví dụ: sản phẩm đang sử dụng).", e.getSQLState(), e);
             }
@@ -128,6 +112,39 @@ public class CategoryDataStore {
             }
         } catch (SQLException e) {
             System.err.println("Lỗi SQL khi lấy tất cả categories: " + e.getMessage());
+            throw e;
+        }
+        return categories;
+    }
+
+    /**
+     * Lấy danh sách các category dựa trên product_type.
+     * Chỉ trả về các category có sản phẩm thuộc product_type đó.
+     * @param productType Loại sản phẩm (ví dụ: "Laptop", "Accessory")
+     * @return Danh sách các Category.
+     * @throws SQLException Nếu có lỗi truy vấn CSDL.
+     */
+    public List<Category> getCategoriesByProductType(String productType) throws SQLException {
+        List<Category> categories = new ArrayList<>();
+        if (productType == null || productType.trim().isEmpty()) {
+            return getAllCategories(); // Hoặc trả về rỗng tùy logic mong muốn
+        }
+        // Câu SQL này JOIN PRODUCTS và CATEGORIES, lọc theo product_type
+        // và chỉ lấy các category riêng biệt có sản phẩm thuộc type đó.
+        String sql = "SELECT DISTINCT c.category_id, c.category_name " +
+                "FROM categories c " + // Giả sử tên bảng categories là 'categories' (viết thường)
+                "JOIN PRODUCTS p ON c.category_id = p.category_id " +
+                "WHERE p.product_type = ? ORDER BY c.category_name";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, productType);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    categories.add(new Category(rs.getInt("category_id"), rs.getString("category_name")));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy categories theo product type '" + productType + "': " + e.getMessage());
             throw e;
         }
         return categories;

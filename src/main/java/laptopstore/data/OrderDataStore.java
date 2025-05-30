@@ -2,7 +2,6 @@ package laptopstore.data;
 
 import laptopstore.model.Order;
 import laptopstore.model.OrderItem;
-// import laptopstore.model.Product; // Không cần trực tiếp ở đây nữa nếu OrderItem đã có productName
 import laptopstore.util.DatabaseConnection;
 
 import java.math.BigDecimal;
@@ -18,6 +17,24 @@ import java.util.List;
 
 public class OrderDataStore {
 
+    // Helper method to clean currency string and convert to BigDecimal
+    private BigDecimal getBigDecimalFromMoneyString(ResultSet rs, String columnName) throws SQLException {
+        String moneyString = rs.getString(columnName);
+        if (moneyString == null) {
+            return null;
+        }
+        String cleanedString = moneyString.replaceAll("[^\\d.-]", "").replace(",", "");
+        if (cleanedString.isEmpty()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(cleanedString);
+        } catch (NumberFormatException e) {
+            System.err.println("Error parsing BigDecimal from string: '" + moneyString + "' (cleaned: '" + cleanedString + "') for column: " + columnName);
+            throw new SQLException("Bad value for type BigDecimal after cleaning: " + moneyString, e);
+        }
+    }
+
     public Order addOrder(Order order) throws SQLException {
         if (order == null) throw new IllegalArgumentException("Order object cannot be null.");
         if (order.getCustomerId() <= 0) throw new IllegalArgumentException("Customer ID is invalid for the order.");
@@ -25,7 +42,7 @@ public class OrderDataStore {
             throw new IllegalArgumentException("An order must have at least one item.");
         }
 
-        order.calculateAndSetTotals(); // Đảm bảo tổng tiền được tính đúng với BigDecimal
+        order.calculateAndSetTotals();
 
         Connection conn = null;
         String insertOrderSql = "INSERT INTO ORDERS (customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) " +
@@ -48,21 +65,25 @@ public class OrderDataStore {
                 pstmtOrder.setDate(3, order.getOrderDate() != null ? java.sql.Date.valueOf(order.getOrderDate()) : java.sql.Date.valueOf(LocalDate.now()));
                 pstmtOrder.setString(4, order.getStatus() != null ? order.getStatus() : "Pending");
 
-                pstmtOrder.setBigDecimal(5, order.getNetAmount());     // Đã là BigDecimal
-                pstmtOrder.setBigDecimal(6, order.getTax());           // Đã là BigDecimal
-                pstmtOrder.setBigDecimal(7, order.getTotalAmount());   // Đã là BigDecimal
+                pstmtOrder.setBigDecimal(5, order.getNetAmount());
+                pstmtOrder.setBigDecimal(6, order.getTax());
+                pstmtOrder.setBigDecimal(7, order.getTotalAmount());
 
                 pstmtOrder.setString(8, order.getShippingAddress());
                 pstmtOrder.setString(9, order.getNotes());
 
                 int affectedRows = pstmtOrder.executeUpdate();
-                if (affectedRows == 0) throw new SQLException("Creating order failed, no rows affected in ORDERS.");
+                if (affectedRows == 0) {
+                    conn.rollback();
+                    throw new SQLException("Creating order failed, no rows affected in ORDERS table.");
+                }
 
                 try (ResultSet generatedKeys = pstmtOrder.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
                         order.setOrderId(generatedKeys.getInt(1));
                     } else {
-                        throw new SQLException("Creating order failed, no ID obtained for ORDERS.");
+                        conn.rollback();
+                        throw new SQLException("Creating order failed, no ID obtained for ORDERS table.");
                     }
                 }
             }
@@ -71,7 +92,7 @@ public class OrderDataStore {
                 try (PreparedStatement pstmtOrderItem = conn.prepareStatement(insertOrderItemSql, Statement.RETURN_GENERATED_KEYS)) {
                     for (OrderItem item : order.getOrderItems()) {
                         if (item.getProductId() <=0 || item.getQuantity() <=0 || item.getUnitPrice() == null || item.getUnitPrice().compareTo(BigDecimal.ZERO) < 0) {
-                            conn.rollback(); // Rollback nếu có item không hợp lệ
+                            conn.rollback();
                             throw new SQLException("Invalid OrderItem data: " + item);
                         }
                         item.setOrderId(order.getOrderId());
@@ -79,7 +100,7 @@ public class OrderDataStore {
                         pstmtOrderItem.setInt(1, item.getOrderId());
                         pstmtOrderItem.setInt(2, item.getProductId());
                         pstmtOrderItem.setInt(3, item.getQuantity());
-                        pstmtOrderItem.setBigDecimal(4, item.getUnitPrice()); // Đã là BigDecimal
+                        pstmtOrderItem.setBigDecimal(4, item.getUnitPrice());
 
                         int itemAffectedRows = pstmtOrderItem.executeUpdate();
                         if (itemAffectedRows > 0) {
@@ -87,10 +108,12 @@ public class OrderDataStore {
                                 if (itemGeneratedKeys.next()) {
                                     item.setOdId(itemGeneratedKeys.getInt(1));
                                 } else {
+                                    conn.rollback();
                                     throw new SQLException("Creating order item failed, no OD_ID obtained for product_id: " + item.getProductId());
                                 }
                             }
                         } else {
+                            conn.rollback();
                             throw new SQLException("Creating order item failed (no rows affected) for product_id: " + item.getProductId());
                         }
                     }
@@ -116,10 +139,10 @@ public class OrderDataStore {
         if (orderId <= 0) return null;
         Order order = null;
         String orderSql = "SELECT o.*, c.first_name as customer_first_name, c.last_name as customer_last_name " +
-                "FROM ORDERS o JOIN CUSTOMERS c ON o.customer_id = c.customer_id " +
+                "FROM ORDERS o INNER JOIN CUSTOMERS c ON o.customer_id = c.customer_id " +
                 "WHERE o.order_id = ?";
         String orderItemsSql = "SELECT od.*, p.product_name as item_product_name " +
-                "FROM ORDER_DETAILS od JOIN PRODUCTS p ON od.product_id = p.product_id " +
+                "FROM ORDER_DETAILS od INNER JOIN PRODUCTS p ON od.product_id = p.product_id " +
                 "WHERE od.order_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection()) {
@@ -148,7 +171,7 @@ public class OrderDataStore {
                 order.setOrderItems(items);
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy order theo ID " + orderId + ": " + e.getMessage());
+            System.err.println("SQL Error when fetching order by ID " + orderId + ": " + e.getMessage());
             throw e;
         }
         return order;
@@ -156,7 +179,7 @@ public class OrderDataStore {
 
     public boolean updateOrderStatus(int orderId, String newStatus) throws SQLException {
         if (orderId <= 0 || newStatus == null || newStatus.trim().isEmpty()) {
-            throw new IllegalArgumentException("Order ID hoặc Status không hợp lệ.");
+            throw new IllegalArgumentException("Order ID or Status is invalid for update.");
         }
         String sql = "UPDATE ORDERS SET status = ? WHERE order_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -165,22 +188,20 @@ public class OrderDataStore {
             pstmt.setInt(2, orderId);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi cập nhật trạng thái order ID " + orderId + ": " + e.getMessage());
+            System.err.println("SQL Error when updating status for order ID " + orderId + ": " + e.getMessage());
             throw e;
         }
     }
 
-    public boolean updateOrder(Order order) throws SQLException {
+    public boolean updateOrder(Order order, List<OrderItem> originalItems) throws SQLException {
         if (order == null || order.getOrderId() <= 0) {
-            throw new IllegalArgumentException("Order hoặc Order ID không hợp lệ để cập nhật.");
+            throw new IllegalArgumentException("Order or Order ID is invalid for update.");
         }
         order.calculateAndSetTotals();
 
         String sql = "UPDATE ORDERS SET customer_id=?, payment_id=?, order_date=?, status=?, " +
                 "net_amount=?, tax=?, total_amount=?, shipping_address=?, notes=? " +
                 "WHERE order_id=?";
-        // Cập nhật OrderItems cần logic phức tạp hơn (xóa cũ, thêm mới) và nên nằm trong transaction.
-        // Phương thức này hiện chỉ cập nhật bảng ORDERS.
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, order.getCustomerId());
@@ -197,21 +218,20 @@ public class OrderDataStore {
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi cập nhật order ID " + order.getOrderId() + ": " + e.getMessage());
+            System.err.println("SQL Error when updating order ID " + order.getOrderId() + ": " + e.getMessage());
             throw e;
         }
     }
 
     public boolean deleteOrder(int orderId) throws SQLException {
-        if (orderId <= 0) throw new IllegalArgumentException("Order ID không hợp lệ để xóa.");
-        // ON DELETE CASCADE trên ORDER_DETAILS sẽ tự xóa items.
+        if (orderId <= 0) throw new IllegalArgumentException("Invalid Order ID for deletion.");
         String sql = "DELETE FROM ORDERS WHERE order_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, orderId);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi xóa order ID " + orderId + ": " + e.getMessage());
+            System.err.println("SQL Error when deleting order ID " + orderId + ": " + e.getMessage());
             throw e;
         }
     }
@@ -219,7 +239,7 @@ public class OrderDataStore {
     public List<Order> getAllOrders() throws SQLException {
         List<Order> orders = new ArrayList<>();
         String sql = "SELECT o.*, c.first_name as customer_first_name, c.last_name as customer_last_name " +
-                "FROM ORDERS o JOIN CUSTOMERS c ON o.customer_id = c.customer_id " +
+                "FROM ORDERS o INNER JOIN CUSTOMERS c ON o.customer_id = c.customer_id " +
                 "ORDER BY o.order_date DESC, o.order_id DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -227,11 +247,10 @@ public class OrderDataStore {
             while (rs.next()) {
                 Order order = mapRowToOrder(rs);
                 order.setCustomerName(rs.getString("customer_first_name") + " " + rs.getString("customer_last_name"));
-                // Không load OrderItems ở đây để tránh N+1. UI sẽ gọi getOrderById nếu cần chi tiết.
                 orders.add(order);
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy tất cả orders: " + e.getMessage());
+            System.err.println("SQL Error when fetching all orders: " + e.getMessage());
             throw e;
         }
         return orders;
@@ -240,21 +259,22 @@ public class OrderDataStore {
     private Order mapRowToOrder(ResultSet rs) throws SQLException {
         int id = rs.getInt("order_id");
         int customerId = rs.getInt("customer_id");
-        Integer paymentIdObj = rs.getObject("payment_id", Integer.class); // Lấy Integer để xử lý NULL
-        int paymentId = (paymentIdObj != null) ? paymentIdObj : 0; // Chuyển về int, 0 nếu null
+        Integer paymentIdObj = rs.getObject("payment_id", Integer.class);
+        int paymentId = (paymentIdObj != null) ? paymentIdObj : 0;
 
         java.sql.Date orderDateSql = rs.getDate("order_date");
         LocalDate orderDate = (orderDateSql != null) ? orderDateSql.toLocalDate() : null;
         String status = rs.getString("status");
-        BigDecimal netAmountBd = rs.getBigDecimal("net_amount");     // Lấy trực tiếp BigDecimal
-        BigDecimal taxBd = rs.getBigDecimal("tax");                 // Lấy trực tiếp BigDecimal
-        BigDecimal totalAmountBd = rs.getBigDecimal("total_amount"); // Lấy trực tiếp BigDecimal
+
+        // SỬA Ở ĐÂY: Đọc MONEY từ CSDL
+        BigDecimal netAmountBd = getBigDecimalFromMoneyString(rs, "net_amount");
+        BigDecimal taxBd = getBigDecimalFromMoneyString(rs, "tax");
+        BigDecimal totalAmountBd = getBigDecimalFromMoneyString(rs, "total_amount");
+
         String shippingAddress = rs.getString("shipping_address");
         String notes = rs.getString("notes");
 
-        // Sử dụng constructor của Order đã được cập nhật
         Order order = new Order(id, customerId, paymentId, orderDate, status, netAmountBd, taxBd, totalAmountBd, shippingAddress, notes);
-        // customerName sẽ được set ở hàm gọi sau khi JOIN
         return order;
     }
 
@@ -263,11 +283,11 @@ public class OrderDataStore {
         int orderId = rs.getInt("order_id");
         int productId = rs.getInt("product_id");
         int quantity = rs.getInt("quantity");
-        BigDecimal unitPriceBd = rs.getBigDecimal("unit_price"); // Lấy trực tiếp BigDecimal
 
-        // Sử dụng constructor của OrderItem đã được cập nhật
+        // SỬA Ở ĐÂY: Đọc MONEY từ CSDL
+        BigDecimal unitPriceBd = getBigDecimalFromMoneyString(rs, "unit_price");
+
         OrderItem item = new OrderItem(odId, orderId, productId, quantity, unitPriceBd);
-        // productName sẽ được set ở hàm gọi sau khi JOIN
         return item;
     }
 }
