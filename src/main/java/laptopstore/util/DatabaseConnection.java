@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
     // THAY ĐỔI CÁC THÔNG SỐ NÀY CHO PHÙ HỢP VỚI CSDL CỦA BẠN
-    private static final String URL = "jdbc:postgresql://localhost:5432/LaptopStore"; // Tên CSDL của bạn
+    private static final String URL = "jdbc:postgresql://localhost:5432/laptopstore"; // Tên CSDL của bạn
     private static final String USER = "postgres"; // USERNAME POSTGRESQL CỦA BẠN
     private static final String PASSWORD = "admin"; // PASSWORD CỦA BẠN
 

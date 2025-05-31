@@ -1,9 +1,5 @@
 package laptopstore.data;
 
-import laptopstore.model.Payment;
-// import laptopstore.model.Employee; // Không cần trực tiếp ở đây nếu Payment model đã có employeeName
-import laptopstore.util.DatabaseConnection;
-
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,6 +11,9 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import laptopstore.model.Payment;
+import laptopstore.util.DatabaseConnection;
 
 public class PaymentDataStore {
 
@@ -155,6 +154,28 @@ public class PaymentDataStore {
             }
         } catch (SQLException e) {
             System.err.println("Lỗi SQL khi lấy tất cả payments: " + e.getMessage());
+            throw e;
+        }
+        return payments;
+    }
+
+    public List<Payment> getLatestPayments(int limit) throws SQLException {
+        List<Payment> payments = new ArrayList<>();
+        String sql = "SELECT p.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name " +
+                "FROM PAYMENTS p " +
+                "LEFT JOIN EMPLOYEES e ON p.employee_id = e.employee_id " +
+                "ORDER BY p.payment_date DESC, p.payment_id DESC LIMIT ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, limit);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    payments.add(mapRowToPayment(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching latest " + limit + " payments: " + e.getMessage());
             throw e;
         }
         return payments;

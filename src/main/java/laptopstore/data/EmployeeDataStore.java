@@ -1,8 +1,5 @@
 package laptopstore.data;
 
-import laptopstore.model.Employee;
-import laptopstore.util.DatabaseConnection;
-
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -13,6 +10,9 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import laptopstore.model.Employee;
+import laptopstore.util.DatabaseConnection;
 
 public class EmployeeDataStore {
 
@@ -167,6 +167,25 @@ public class EmployeeDataStore {
             }
         } catch (SQLException e) {
             System.err.println("Lỗi SQL khi lấy tất cả nhân viên: " + e.getMessage());
+            throw e;
+        }
+        return employees;
+    }
+
+    public List<Employee> getLatestEmployees(int limit) throws SQLException {
+        List<Employee> employees = new ArrayList<>();
+        String sql = "SELECT * FROM EMPLOYEES ORDER BY hire_day DESC, employee_id DESC LIMIT ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, limit);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    employees.add(mapRowToEmployee(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching latest " + limit + " employees: " + e.getMessage());
             throw e;
         }
         return employees;

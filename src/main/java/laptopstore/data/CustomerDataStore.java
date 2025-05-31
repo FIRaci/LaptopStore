@@ -1,8 +1,5 @@
 package laptopstore.data;
 
-import laptopstore.model.Customer;
-import laptopstore.util.DatabaseConnection;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,6 +11,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import laptopstore.model.Customer;
+import laptopstore.util.DatabaseConnection;
 
 public class CustomerDataStore {
 
@@ -173,6 +173,58 @@ public class CustomerDataStore {
         } catch (SQLException e) {
             System.err.println("Lỗi SQL khi lấy tất cả khách hàng: " + e.getMessage());
             throw e;
+        }
+        return customers;
+    }
+
+    public List<Customer> getLatestCustomers(int limit) throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT customer_id, username, email, first_name, last_name, created_at, " +
+                    "gender, address, date_of_birth, phone " +
+                    "FROM CUSTOMERS ORDER BY created_at DESC, customer_id DESC LIMIT ?";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, limit);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    customers.add(mapRowToCustomer(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching latest " + limit + " customers: " + e.getMessage());
+            throw e;
+        }
+        return customers;
+    }
+
+    public List<Customer> getMaleCustomers() throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT * FROM CUSTOMERS WHERE gender = 'M' ORDER BY last_name, first_name";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    customers.add(mapRowToCustomer(rs));
+                }
+            }
+        }
+        return customers;
+    }
+
+    public List<Customer> getCustomersNameStartsWith(String prefix) throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT * FROM CUSTOMERS WHERE first_name LIKE ? ORDER BY last_name, first_name";
+        
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, prefix + "%");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    customers.add(mapRowToCustomer(rs));
+                }
+            }
         }
         return customers;
     }

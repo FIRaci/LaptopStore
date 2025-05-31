@@ -1,8 +1,5 @@
 package laptopstore.data;
 
-import laptopstore.model.Product;
-import laptopstore.util.DatabaseConnection;
-
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,6 +11,9 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import laptopstore.model.Product;
+import laptopstore.util.DatabaseConnection;
 
 public class ProductDataStore {
 
@@ -202,6 +202,26 @@ public class ProductDataStore {
         } catch (SQLException e) {
             System.err.println("Lỗi SQL khi lấy sản phẩm theo category ID " + categoryId + ": " + e.getMessage());
             throw e;
+        }
+        return products;
+    }
+
+    public List<Product> getLatestProducts(int limit) throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, " +
+                "p.price, p.stock_quantity, p.year_publish, p.product_type, p.category_id, " +
+                "c.category_name " +
+                "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
+                "ORDER BY p.year_publish DESC NULLS LAST, p.product_id DESC LIMIT ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, limit);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(mapRowToProduct(rs));
+                }
+            }
         }
         return products;
     }

@@ -1,15 +1,14 @@
 package laptopstore.screen;
 
-import laptopstore.data.*;
-import laptopstore.model.*;
-import laptopstore.screen.tablemodel.*;
-
-import org.jdesktop.swingx.JXDatePicker;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.JTableHeader;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.SQLException;
@@ -22,6 +21,52 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.JTableHeader;
+
+import org.jdesktop.swingx.JXDatePicker;
+
+import laptopstore.data.CategoryDataStore;
+import laptopstore.data.CustomerDataStore;
+import laptopstore.data.EmployeeDataStore;
+import laptopstore.data.OrderDataStore;
+import laptopstore.data.PaymentDataStore;
+import laptopstore.data.ProductDataStore;
+import laptopstore.model.Category;
+import laptopstore.model.Customer;
+import laptopstore.model.Employee;
+import laptopstore.model.Order;
+import laptopstore.model.OrderItem;
+import laptopstore.model.Payment;
+import laptopstore.model.Product;
+import laptopstore.screen.dialog.QueryOptionsDialog;
+import laptopstore.screen.tablemodel.CustomerTableModel;
+import laptopstore.screen.tablemodel.EmployeeTableModel;
+import laptopstore.screen.tablemodel.OrderItemTableModel;
+import laptopstore.screen.tablemodel.OrderTableModel;
+import laptopstore.screen.tablemodel.PaymentTableModel;
+import laptopstore.screen.tablemodel.ProductTableModel;
 
 public class AdminDashboardScreen {
 
@@ -310,17 +355,21 @@ public class AdminDashboardScreen {
 
         JPanel buttonPanelVertical = new JPanel();
         buttonPanelVertical.setLayout(new BoxLayout(buttonPanelVertical, BoxLayout.Y_AXIS));
+        JButton queryOptionsButton = new JButton("Query Options");
         JButton addButton = new JButton("Add New Product");
         JButton updateButton = new JButton("Update Selected");
         JButton deleteButton = new JButton("Delete Selected");
         JButton clearButton = new JButton("Clear Form");
 
         int buttonPreferredWidth = 180;
+        styleButtonForVerticalLayout(queryOptionsButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(addButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(updateButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(deleteButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(clearButton, buttonPreferredWidth);
 
+        buttonPanelVertical.add(queryOptionsButton);
+        buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(addButton);
         buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(updateButton);
@@ -340,6 +389,31 @@ public class AdminDashboardScreen {
         splitPane.setResizeWeight(0.70);
         productsPanel.add(splitPane, BorderLayout.CENTER);
 
+        queryOptionsButton.addActionListener(e -> {
+            String[] productOptions = {
+                "Latest 5 Products",
+                "Latest 10 Products",
+                "All Products"
+            };
+            QueryOptionsDialog dialog = new QueryOptionsDialog(frame, "Product Query Options", productOptions);
+            dialog.setOnOptionSelected(option -> {
+                try {
+                    List<Product> products;
+                    switch (option) {
+                        case "Latest 5 Products" -> products = productDb.getLatestProducts(5);
+                        case "Latest 10 Products" -> products = productDb.getLatestProducts(10);
+                        case "All Products" -> products = productDb.getAllProducts();
+                        default -> {
+                            return;
+                        }
+                    }
+                    productTableModel.setProducts(products);
+                } catch (SQLException ex) {
+                    showAlert("Query Error", "Error executing query: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+                }
+            });
+            dialog.setVisible(true);
+        });
         addButton.addActionListener(e -> addProductAction());
         updateButton.addActionListener(e -> updateProductAction());
         deleteButton.addActionListener(e -> deleteProductAction());
@@ -568,7 +642,8 @@ public class AdminDashboardScreen {
         if (productTypeComboProd.getItemCount() > 0) productTypeComboProd.setSelectedIndex(0);
         if (categoryComboProd.getItemCount() > 0) categoryComboProd.setSelectedIndex(0);
         publishDatePickerProd.setDate(null);
-        productTable.clearSelection();
+        productTable.clearSelection(); // Thêm dòng này
+        productTable.getSelectionModel().clearSelection(); // Thêm dòng này để đảm bảo
     }
     // --- KẾT THÚC TAB PRODUCTS ---
 
@@ -630,17 +705,21 @@ public class AdminDashboardScreen {
 
         JPanel buttonPanelVertical = new JPanel();
         buttonPanelVertical.setLayout(new BoxLayout(buttonPanelVertical, BoxLayout.Y_AXIS));
+        JButton queryOptionsButton = new JButton("Query Options");
         JButton addButton = new JButton("Add New Customer");
         JButton updateButton = new JButton("Update Selected");
         JButton deleteButton = new JButton("Delete Selected");
         JButton clearButton = new JButton("Clear Form");
 
         int buttonPreferredWidth = 180;
+        styleButtonForVerticalLayout(queryOptionsButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(addButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(updateButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(deleteButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(clearButton, buttonPreferredWidth);
 
+        buttonPanelVertical.add(queryOptionsButton);
+        buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(addButton);
         buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(updateButton);
@@ -658,6 +737,35 @@ public class AdminDashboardScreen {
         splitPane.setResizeWeight(0.70);
         customersPanel.add(splitPane, BorderLayout.CENTER);
 
+        queryOptionsButton.addActionListener(e -> {
+            String[] customerOptions = {
+                "Latest 5 Customers",
+                "Latest 10 Customers",
+                "Male Customers",
+                "Names Starting with 'A'",
+                "All Customers"
+            };
+            QueryOptionsDialog dialog = new QueryOptionsDialog(frame, "Customer Query Options", customerOptions);
+            dialog.setOnOptionSelected(option -> {
+                try {
+                    List<Customer> customers;
+                    switch (option) {
+                        case "Latest 5 Customers" -> customers = customerDb.getLatestCustomers(5);
+                        case "Latest 10 Customers" -> customers = customerDb.getLatestCustomers(10);
+                        case "Male Customers" -> customers = customerDb.getMaleCustomers();
+                        case "Names Starting with 'A'" -> customers = customerDb.getCustomersNameStartsWith("A");
+                        case "All Customers" -> customers = customerDb.getAllCustomers();
+                        default -> {
+                            return;
+                        }
+                    }
+                    customerTableModel.setCustomers(customers);
+                } catch (SQLException ex) {
+                    showAlert("Query Error", "Error executing query: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+                }
+            });
+            dialog.setVisible(true);
+        });
         addButton.addActionListener(e -> addCustomerAction());
         updateButton.addActionListener(e -> updateCustomerAction());
         deleteButton.addActionListener(e -> deleteCustomerAction());
@@ -712,7 +820,7 @@ public class AdminDashboardScreen {
                 showAlert("Input Error", "Invalid email format.", JOptionPane.ERROR_MESSAGE); return;
             }
 
-            char gender = (genderStr != null && !genderStr.equals("Select...") && !genderStr.isEmpty()) ? genderStr.charAt(0) : '\0'; // '\0' for unspecified
+            char gender = (genderStr != null && !genderStr.equals("Select...") && !genderStr.isEmpty()) ? genderStr.charAt(0) : '\0' ; // '\0' for unspecified
 
             Customer newCustomer = new Customer(0, username, email, firstName, lastName, LocalDateTime.now(), gender, address, dob, phone);
 
@@ -826,11 +934,12 @@ public class AdminDashboardScreen {
         custEmailField.setText("");
         custFirstNameField.setText("");
         custLastNameField.setText("");
-        if (custGenderCombo.getItemCount() > 0) custGenderCombo.setSelectedIndex(0);
+        if(custGenderCombo.getItemCount() > 0) custGenderCombo.setSelectedIndex(0);
         custAddressField.setText("");
         custDateOfBirthPicker.setDate(null);
         custPhoneField.setText("");
-        customerTable.clearSelection();
+        customerTable.clearSelection(); // Thêm dòng này
+        customerTable.getSelectionModel().clearSelection();
     }
     // --- KẾT THÚC TAB CUSTOMERS ---
 
@@ -897,17 +1006,21 @@ public class AdminDashboardScreen {
 
         JPanel buttonPanelVertical = new JPanel();
         buttonPanelVertical.setLayout(new BoxLayout(buttonPanelVertical, BoxLayout.Y_AXIS));
+        JButton queryOptionsButton = new JButton("Query Options");
         JButton addButton = new JButton("Add New Employee");
         JButton updateButton = new JButton("Update Selected");
         JButton deleteButton = new JButton("Delete Selected");
         JButton clearButton = new JButton("Clear Form");
 
         int buttonPreferredWidth = 180;
+        styleButtonForVerticalLayout(queryOptionsButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(addButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(updateButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(deleteButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(clearButton, buttonPreferredWidth);
 
+        buttonPanelVertical.add(queryOptionsButton);
+        buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(addButton);
         buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(updateButton);
@@ -925,6 +1038,31 @@ public class AdminDashboardScreen {
         splitPane.setResizeWeight(0.70);
         employeesPanel.add(splitPane, BorderLayout.CENTER);
 
+        queryOptionsButton.addActionListener(e -> {
+            String[] employeeOptions = {
+                "Latest 5 Employees",
+                "Latest 10 Employees",
+                "All Employees"
+            };
+            QueryOptionsDialog dialog = new QueryOptionsDialog(frame, "Employee Query Options", employeeOptions);
+            dialog.setOnOptionSelected(option -> {
+                try {
+                    List<Employee> employees;
+                    switch (option) {
+                        case "Latest 5 Employees" -> employees = employeeDb.getLatestEmployees(5);
+                        case "Latest 10 Employees" -> employees = employeeDb.getLatestEmployees(10);
+                        case "All Employees" -> employees = employeeDb.getAllEmployees();
+                        default -> {
+                            return;
+                        }
+                    }
+                    employeeTableModel.setEmployees(employees);
+                } catch (SQLException ex) {
+                    showAlert("Query Error", "Error executing query: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+                }
+            });
+            dialog.setVisible(true);
+        });
         addButton.addActionListener(e -> addEmployeeAction());
         updateButton.addActionListener(e -> updateEmployeeAction());
         deleteButton.addActionListener(e -> deleteEmployeeAction());
@@ -1115,7 +1253,8 @@ public class AdminDashboardScreen {
         empSalaryField.setText("");
         empWorkDayField.setText("");
         empHireDatePicker.setDate(null);
-        employeeTable.clearSelection();
+        employeeTable.clearSelection(); 
+        employeeTable.getSelectionModel().clearSelection();
     }
     // --- KẾT THÚC TAB EMPLOYEES ---
 
@@ -1178,17 +1317,21 @@ public class AdminDashboardScreen {
 
         JPanel buttonPanelVertical = new JPanel();
         buttonPanelVertical.setLayout(new BoxLayout(buttonPanelVertical, BoxLayout.Y_AXIS));
+        JButton queryOptionsButton = new JButton("Query Options");
         JButton addButton = new JButton("Add New Payment");
         JButton updateButton = new JButton("Update Selected");
         JButton deleteButton = new JButton("Delete Selected");
         JButton clearButton = new JButton("Clear Form");
 
         int buttonPreferredWidth = 180;
+        styleButtonForVerticalLayout(queryOptionsButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(addButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(updateButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(deleteButton, buttonPreferredWidth);
         styleButtonForVerticalLayout(clearButton, buttonPreferredWidth);
 
+        buttonPanelVertical.add(queryOptionsButton);
+        buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(addButton);
         buttonPanelVertical.add(Box.createRigidArea(new Dimension(0, 8)));
         buttonPanelVertical.add(updateButton);
@@ -1198,14 +1341,42 @@ public class AdminDashboardScreen {
         buttonPanelVertical.add(clearButton);
 
         gbcForm.gridx = 0; gbcForm.gridy = y; gbcForm.gridwidth = 2;
-        gbcForm.anchor = GridBagConstraints.NORTHEAST; gbcForm.fill = GridBagConstraints.NONE;
-        gbcForm.weighty = 0; gbcForm.insets = new Insets(15, 5, 5, 5);
+        gbcForm.anchor = GridBagConstraints.NORTHEAST;
+        gbcForm.fill = GridBagConstraints.NONE;
+        gbcForm.weighty = 0;
+        gbcForm.insets = new Insets(15, 5, 5, 5);
         paymentFormPanel.add(buttonPanelVertical, gbcForm);
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, paymentTableScrollPane, paymentFormPanel);
         splitPane.setResizeWeight(0.70);
         paymentsPanel.add(splitPane, BorderLayout.CENTER);
 
+        queryOptionsButton.addActionListener(e -> {
+            String[] paymentOptions = {
+                "Latest 5 Payments",
+                "Latest 10 Payments",
+                "All Payments"
+            };
+            QueryOptionsDialog dialog = new QueryOptionsDialog(frame, "Payment Query Options", paymentOptions);
+            dialog.setOnOptionSelected(option -> {
+                try {
+                    List<Payment> payments;
+                    switch (option) {
+                        case "Latest 5 Payments" -> payments = paymentDb.getLatestPayments(5);
+                        case "Latest 10 Payments" -> payments = paymentDb.getLatestPayments(10);
+                        case "All Payments" -> payments = paymentDb.getAllPayments();
+                        default -> {
+                            return;
+                        }
+                    }
+                    paymentTableModel.setPayments(payments);
+                    loadEmployeesForPaymentForm();
+                } catch (SQLException ex) {
+                    showAlert("Query Error", "Error executing query: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
+                }
+            });
+            dialog.setVisible(true);
+        });
         addButton.addActionListener(e -> addPaymentAction());
         updateButton.addActionListener(e -> updatePaymentAction());
         deleteButton.addActionListener(e -> deletePaymentAction());
@@ -1353,7 +1524,8 @@ public class AdminDashboardScreen {
 
             boolean success = paymentDb.updatePayment(paymentToUpdate);
             if (success) {
-                loadPaymentsData();
+                loadPaymentsData(); // Load lại toàn bộ dữ liệu 
+                loadEmployeesForPaymentForm(); // Load lại danh sách employees
                 resetPaymentForm();
                 showAlert("Success", "Payment updated successfully.", JOptionPane.INFORMATION_MESSAGE);
             } else {
@@ -1384,34 +1556,23 @@ public class AdminDashboardScreen {
             try {
                 boolean success = paymentDb.deletePayment(paymentToDelete.getPaymentId());
                 if (success) {
-                    loadPaymentsData();
+                    loadPaymentsData(); // Load lại toàn bộ dữ liệu
+                    loadEmployeesForPaymentForm(); // Load lại danh sách employees
                     resetPaymentForm();
                     showAlert("Success", "Payment deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
                 } else {
                     showAlert("Error", "Failed to delete payment.", JOptionPane.ERROR_MESSAGE);
-                }
+ }
             } catch (SQLException ex) {
                 if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().contains("constraint"))) {
                     showAlert("Deletion Error", "Cannot delete payment: It is referenced in existing orders.", JOptionPane.ERROR_MESSAGE);
                 } else {
                     showAlert("Database Error", "Error deleting payment: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
                 }
-                ex.printStackTrace();
+                ex.printStackTrace(); // Sửa lỗi chính tả từ printStacktrace() thành printStackTrace()
             }
         }
     }
-
-    private void resetPaymentForm() {
-        paymentIdField.setText("");
-        if(paymentEmployeeCombo.getItemCount() > 0) paymentEmployeeCombo.setSelectedIndex(0);
-        paymentAmountField.setText("");
-        paymentDatePicker.setDate(null);
-        if(paymentMethodCombo.getItemCount() > 0) paymentMethodCombo.setSelectedIndex(0);
-        if(paymentStatusCombo.getItemCount() > 0) paymentStatusCombo.setSelectedIndex(0);
-        paymentNotesArea.setText("");
-        paymentTable.clearSelection();
-    }
-    // --- KẾT THÚC TAB PAYMENTS ---
 
     // --- TAB MANAGE ORDERS ---
     private void createManageOrdersTab() {
@@ -1971,8 +2132,11 @@ public class AdminDashboardScreen {
         resetOrderFormFields();
         tempOrderItems.clear();
         orderItemTableModel.clearItems();
-        updateTempOrderTotalLabel(); // Reset label tổng tiền
+        updateTempOrderTotalLabel();
         orderTable.clearSelection();
+        orderTable.getSelectionModel().clearSelection();
+        orderItemTable.clearSelection();
+        orderItemTable.getSelectionModel().clearSelection();
     }
     // --- KẾT THÚC TAB ORDERS ---
 
@@ -1980,8 +2144,28 @@ public class AdminDashboardScreen {
         SwingUtilities.invokeLater(() -> frame.setVisible(true));
     }
 
+    // Thêm phương thức show
+    public void show() {
+        if (frame != null) {
+            frame.setVisible(true);
+        }
+    }
+
+    // Optional: Thêm getter cho frame nếu cần
     public JFrame getFrame() {
         return frame;
+    }
+
+    private void resetPaymentForm() {
+        paymentIdField.setText("");
+        if(paymentEmployeeCombo.getItemCount() > 0) paymentEmployeeCombo.setSelectedIndex(0);
+        paymentAmountField.setText("");
+        paymentDatePicker.setDate(null);
+        if(paymentMethodCombo.getItemCount() > 0) paymentMethodCombo.setSelectedIndex(0);
+        if(paymentStatusCombo.getItemCount() > 0) paymentStatusCombo.setSelectedIndex(0);
+        paymentNotesArea.setText("");
+        paymentTable.clearSelection();
+        paymentTable.getSelectionModel().clearSelection();
     }
 }
 
