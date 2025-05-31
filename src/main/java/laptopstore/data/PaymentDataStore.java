@@ -17,12 +17,23 @@ import laptopstore.util.DatabaseConnection;
 
 public class PaymentDataStore {
 
+    private void resetPaymentSequence() throws SQLException {
+        String sql = "SELECT setval('payments_payment_id_seq', COALESCE((SELECT MAX(payment_id) FROM payments), 0))";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        }
+    }
+
     public Payment addPayment(Payment payment) throws SQLException {
         if (payment == null) throw new IllegalArgumentException("Payment object cannot be null.");
         if (payment.getPaymentMethod() == null || payment.getPaymentMethod().trim().isEmpty()) throw new IllegalArgumentException("Payment method is required.");
         if (payment.getTotalAmount() == null || payment.getTotalAmount().compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("Total amount must be non-negative.");
         if (payment.getStatus() == null || payment.getStatus().trim().isEmpty()) throw new IllegalArgumentException("Status is required.");
 
+
+        // Reset sequence trước khi thêm
+        resetPaymentSequence();
 
         String sql = "INSERT INTO PAYMENTS (employee_id, payment_date, payment_method, total_amount, status, notes) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";

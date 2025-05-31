@@ -392,7 +392,12 @@ public class AdminDashboardScreen {
         queryOptionsButton.addActionListener(e -> {
             String[] productOptions = {
                 "Latest 5 Products",
-                "Latest 10 Products",
+                "Latest 10 Products", 
+                "Sales in Last 30 Days",
+                "Top 5 Best Sellers",
+                "Never Sold Products",
+                "Inventory and Revenue",
+                "Products with Pending Orders",
                 "All Products"
             };
             QueryOptionsDialog dialog = new QueryOptionsDialog(frame, "Product Query Options", productOptions);
@@ -402,6 +407,11 @@ public class AdminDashboardScreen {
                     switch (option) {
                         case "Latest 5 Products" -> products = productDb.getLatestProducts(5);
                         case "Latest 10 Products" -> products = productDb.getLatestProducts(10);
+                        case "Sales in Last 30 Days" -> products = productDb.getProductsWithRecentOrders();
+                        case "Top 5 Best Sellers" -> products = productDb.getTopSellingProducts();
+                        case "Never Sold Products" -> products = productDb.getNeverSoldProducts();
+                        case "Inventory and Revenue" -> products = productDb.getProductsWithInventoryAndRevenue();
+                        case "Products with Pending Orders" -> products = productDb.getProductsWithPendingOrders();
                         case "All Products" -> products = productDb.getAllProducts();
                         default -> {
                             return;
@@ -741,8 +751,11 @@ public class AdminDashboardScreen {
             String[] customerOptions = {
                 "Latest 5 Customers",
                 "Latest 10 Customers",
-                "Male Customers",
-                "Names Starting with 'A'",
+                "Top 5 by Orders",
+                "Customers with No Orders",
+                "Top Gaming Laptop Buyers", 
+                "High Spending Customers",
+                "Customers with Pending Orders",
                 "All Customers"
             };
             QueryOptionsDialog dialog = new QueryOptionsDialog(frame, "Customer Query Options", customerOptions);
@@ -752,8 +765,11 @@ public class AdminDashboardScreen {
                     switch (option) {
                         case "Latest 5 Customers" -> customers = customerDb.getLatestCustomers(5);
                         case "Latest 10 Customers" -> customers = customerDb.getLatestCustomers(10);
-                        case "Male Customers" -> customers = customerDb.getMaleCustomers();
-                        case "Names Starting with 'A'" -> customers = customerDb.getCustomersNameStartsWith("A");
+                        case "Top 5 by Orders" -> customers = customerDb.getTopCustomersByOrders();
+                        case "Customers with No Orders" -> customers = customerDb.getCustomersWithNoOrders();
+                        case "Top Gaming Laptop Buyers" -> customers = customerDb.getTopGamingLaptopCustomers();
+                        case "High Spending Customers" -> customers = customerDb.getHighSpendingCustomers();
+                        case "Customers with Pending Orders" -> customers = customerDb.getCustomersWithPendingOrders();
                         case "All Customers" -> customers = customerDb.getAllCustomers();
                         default -> {
                             return;
@@ -1562,7 +1578,7 @@ public class AdminDashboardScreen {
                     showAlert("Success", "Payment deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
                 } else {
                     showAlert("Error", "Failed to delete payment.", JOptionPane.ERROR_MESSAGE);
- }
+                }
             } catch (SQLException ex) {
                 if ("23503".equals(ex.getSQLState()) || (ex.getMessage() != null && ex.getMessage().contains("constraint"))) {
                     showAlert("Deletion Error", "Cannot delete payment: It is referenced in existing orders.", JOptionPane.ERROR_MESSAGE);

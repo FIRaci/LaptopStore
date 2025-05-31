@@ -16,6 +16,14 @@ import laptopstore.util.DatabaseConnection;
 
 public class EmployeeDataStore {
 
+    private void resetEmployeeSequence() throws SQLException {
+        String sql = "SELECT setval('employees_employee_id_seq', COALESCE((SELECT MAX(employee_id) FROM employees), 0))";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        }
+    }
+
     public Employee addEmployee(Employee employee) throws SQLException {
         if (employee == null) throw new IllegalArgumentException("Employee object cannot be null.");
         // Thêm các validate cần thiết
@@ -26,6 +34,8 @@ public class EmployeeDataStore {
         if (employee.getHireDay() == null) throw new IllegalArgumentException("Hire day is required.");
         if (employee.getEmail() == null || employee.getEmail().trim().isEmpty()) throw new IllegalArgumentException("Email is required.");
 
+        // Reset sequence trước khi thêm
+        resetEmployeeSequence();
 
         String sql = "INSERT INTO EMPLOYEES (first_name, last_name, phone, address, gender, bank_number, role, salary, work_day, hire_day, email) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";

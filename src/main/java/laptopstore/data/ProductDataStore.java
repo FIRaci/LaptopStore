@@ -16,6 +16,14 @@ import laptopstore.model.Product;
 import laptopstore.util.DatabaseConnection;
 
 public class ProductDataStore {
+    
+    private void resetProductSequence() throws SQLException {
+        String sql = "SELECT setval('products_product_id_seq', COALESCE((SELECT MAX(product_id) FROM products), 0))";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        }
+    }
 
     // Sử dụng constructor của Product đã được cập nhật để nhận các trường mới
     public Product addProduct(Product product) throws SQLException {
@@ -28,6 +36,8 @@ public class ProductDataStore {
         if (product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("Price must be non-negative.");
         if (product.getStockQuantity() < 0) throw new IllegalArgumentException("Stock quantity must be non-negative.");
 
+        // Reset sequence trước khi thêm 
+        resetProductSequence();
 
         String sql = "INSERT INTO PRODUCTS (product_name, model, brand, description, price, stock_quantity, year_publish, product_type, category_id) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -221,6 +231,103 @@ public class ProductDataStore {
                 while (rs.next()) {
                     products.add(mapRowToProduct(rs));
                 }
+            }
+        }
+        return products;
+    }
+
+    public List<Product> getProductsWithRecentOrders() throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT p.*, c.category_name, COUNT(od.order_id) as order_count " +
+                    "FROM products p " +
+                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                    "LEFT JOIN order_details od ON p.product_id = od.product_id " +
+                    "LEFT JOIN orders o ON od.order_id = o.order_id " +
+                    "WHERE o.order_date >= CURRENT_DATE - INTERVAL '30 days' OR o.order_date IS NULL " +
+                    "GROUP BY p.product_id, c.category_name " +
+                    "ORDER BY order_count DESC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                products.add(mapRowToProduct(rs));
+            }
+        }
+        return products;
+    }
+
+    public List<Product> getTopSellingProducts() throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT p.*, c.category_name, " +
+                    "SUM(od.quantity) as total_sold, " +
+                    "SUM(od.quantity * od.unit_price) as total_revenue " +
+                    "FROM products p " +
+                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                    "JOIN order_details od ON p.product_id = od.product_id " +
+                    "GROUP BY p.product_id, c.category_name " +
+                    "ORDER BY total_sold DESC LIMIT 5";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                products.add(mapRowToProduct(rs));
+            }
+        }
+        return products;
+    }
+
+    public List<Product> getNeverSoldProducts() throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT p.*, c.category_name " +
+                    "FROM products p " +
+                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                    "LEFT JOIN order_details od ON p.product_id = od.product_id " +
+                    "WHERE od.order_id IS NULL";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                products.add(mapRowToProduct(rs));
+            }
+        }
+        return products;
+    }
+
+    public List<Product> getProductsWithInventoryAndRevenue() throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT p.*, c.category_name, " +
+                    "p.stock_quantity as current_stock, " +
+                    "COALESCE(SUM(od.quantity), 0) as total_sold, " +
+                    "COALESCE(SUM(od.quantity * od.unit_price), 0) as total_revenue " +
+                    "FROM products p " +
+                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                    "LEFT JOIN order_details od ON p.product_id = od.product_id " +
+                    "GROUP BY p.product_id, c.category_name " +
+                    "ORDER BY total_revenue DESC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                products.add(mapRowToProduct(rs));
+            }
+        }
+        return products;
+    }
+
+    public List<Product> getProductsWithPendingOrders() throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT DISTINCT p.*, c.category_name " +
+                    "FROM products p " +
+                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                    "JOIN order_details od ON p.product_id = od.product_id " +
+                    "JOIN orders o ON od.order_id = o.order_id " +
+                    "WHERE o.status IN ('Processing', 'Pending') " +
+                    "ORDER BY p.product_id";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                products.add(mapRowToProduct(rs));
             }
         }
         return products;

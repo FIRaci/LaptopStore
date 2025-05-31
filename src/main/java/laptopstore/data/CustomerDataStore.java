@@ -17,7 +17,18 @@ import laptopstore.util.DatabaseConnection;
 
 public class CustomerDataStore {
 
+    private void resetCustomerSequence() throws SQLException {
+        String sql = "SELECT setval('customers_customer_id_seq', COALESCE((SELECT MAX(customer_id) FROM customers), 0))";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        }
+    }
+
     public Customer addCustomer(Customer customer) throws SQLException {
+        // Reset sequence trước khi thêm
+        resetCustomerSequence();
+
         if (customer == null) throw new IllegalArgumentException("Customer object cannot be null.");
         if (customer.getUsername() == null || customer.getUsername().trim().isEmpty()) throw new IllegalArgumentException("Username is required.");
         if (customer.getEmail() == null || customer.getEmail().trim().isEmpty()) throw new IllegalArgumentException("Email is required.");
@@ -224,6 +235,89 @@ public class CustomerDataStore {
                 while (rs.next()) {
                     customers.add(mapRowToCustomer(rs));
                 }
+            }
+        }
+        return customers;
+    }
+
+    public List<Customer> getTopCustomersByOrders() throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT c.*, COUNT(o.order_id) as order_count " +
+                    "FROM customers c " +
+                    "LEFT JOIN orders o ON c.customer_id = o.customer_id " + 
+                    "GROUP BY c.customer_id " +
+                    "ORDER BY order_count DESC " +
+                    "LIMIT 5";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                customers.add(mapRowToCustomer(rs));
+            }
+        }
+        return customers;
+    }
+
+    public List<Customer> getCustomersWithNoOrders() throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT c.* FROM customers c " +
+                    "LEFT JOIN orders o ON c.customer_id = o.customer_id " +
+                    "WHERE o.order_id IS NULL";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                customers.add(mapRowToCustomer(rs));
+            }
+        }
+        return customers;
+    }
+
+    public List<Customer> getTopGamingLaptopCustomers() throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT c.*, COUNT(DISTINCT o.order_id) as gaming_orders " +
+                    "FROM customers c " +
+                    "JOIN orders o ON c.customer_id = o.customer_id " +
+                    "JOIN order_details od ON o.order_id = od.order_id " +
+                    "JOIN products p ON od.product_id = p.product_id " +
+                    "WHERE p.product_type = 'Laptop' AND p.category_id = 1 " +
+                    "GROUP BY c.customer_id " +
+                    "ORDER BY gaming_orders DESC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                customers.add(mapRowToCustomer(rs));
+            }
+        }
+        return customers;
+    }
+
+    public List<Customer> getHighSpendingCustomers() throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT DISTINCT c.* FROM customers c " +
+                    "JOIN orders o ON c.customer_id = o.customer_id " +
+                    "WHERE o.total_amount > 5000000";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                customers.add(mapRowToCustomer(rs));
+            }
+        }
+        return customers;
+    }
+
+    public List<Customer> getCustomersWithPendingOrders() throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT DISTINCT c.* FROM customers c " +
+                    "JOIN orders o ON c.customer_id = o.customer_id " +
+                    "WHERE o.status IN ('Pending', 'Processing')";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                customers.add(mapRowToCustomer(rs));
             }
         }
         return customers;

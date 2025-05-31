@@ -1,10 +1,5 @@
 package laptopstore.data;
 
-import laptopstore.model.Order;
-import laptopstore.model.OrderItem;
-// import laptopstore.model.Product; // Không cần trực tiếp ở đây nữa nếu OrderItem đã có productName
-import laptopstore.util.DatabaseConnection;
-
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -16,7 +11,19 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import laptopstore.model.Order;
+import laptopstore.model.OrderItem;
+import laptopstore.util.DatabaseConnection;
+
 public class OrderDataStore {
+
+    private void resetOrderSequence() throws SQLException {
+        String sql = "SELECT setval('orders_order_id_seq', COALESCE((SELECT MAX(order_id) FROM orders), 0))";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        }
+    }
 
     public Order addOrder(Order order) throws SQLException {
         if (order == null) throw new IllegalArgumentException("Order object cannot be null.");
