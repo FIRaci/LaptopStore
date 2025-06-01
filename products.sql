@@ -1,0 +1,117 @@
+-- Initial PRODUCTS Data
+INSERT INTO PRODUCTS (product_id, product_name, model, brand, description, price, stock_quantity, year_publish, category_id, product_type) VALUES
+(1, 'XPS 15 9530', '9530', 'Dell', '15-inch performance laptop, Intel Core i7, 16GB RAM, 512GB SSD, NVIDIA RTX 4050', 1899.99, 25, '2023-05-10 00:00:00', 2, 'Laptop'),
+(2, 'MacBook Air 13 M2', 'M2', 'Apple', '13.6-inch Retina display, Apple M2 chip, 8GB RAM, 256GB SSD', 1099.00, 40, '2022-07-15 00:00:00', 6, 'Laptop'),
+(3, 'ROG Zephyrus G14 GA402XY', 'GA402XY', 'Asus', '14-inch gaming laptop, AMD Ryzen 9, 32GB RAM, 1TB SSD, NVIDIA RTX 4070', 1649.50, 15, '2023-03-01 00:00:00', 1, 'Laptop'),
+(4, 'ThinkPad X1 Carbon Gen 11', 'Gen 11', 'Lenovo', '14-inch business ultrabook, Intel Core i5, 16GB RAM, 512GB SSD', 1450.00, 30, '2023-01-20 00:00:00', 2, 'Laptop'),
+(5, 'Spectre x360 14 ef2023', 'ef2023', 'HP', '13.5-inch 2-in-1, Intel Core i7, 16GB RAM, 1TB SSD, OLED display', 1599.00, 20, '2023-04-05 00:00:00', 4, 'Laptop'),
+(6, 'Swift Go 14 SFG14-71', 'SFG14-71', 'Acer', '14-inch student laptop, AMD Ryzen 5, 8GB RAM, 512GB SSD', 749.99, 50, '2023-02-12 00:00:00', 5, 'Laptop'),
+(7, 'Blade 16 RZ09-0484', 'RZ09-0484', 'Razer', '16-inch gaming laptop, Intel Core i9, 32GB RAM, 2TB SSD, NVIDIA RTX 4080', 2999.99, 10, '2023-06-01 00:00:00', 1, 'Laptop'),
+(8, 'MX Master 3S Mouse', '910-006556', 'Logitech', 'Advanced wireless mouse for productivity', 99.99, 150, '2022-05-24 00:00:00', 7, 'Accessory'),
+(9, 'Dell UltraSharp U2723QE Monitor', 'U2723QE', 'Dell', '27-inch 4K UHD Monitor, USB-C Hub', 579.99, 35, '2022-10-01 00:00:00', 8, 'Monitor'),
+(10, 'Surface Laptop 5 13.5', 'RBG-00001', 'Microsoft', '13.5-inch touchscreen laptop, Intel Core i5, 8GB RAM, 256GB SSD', 999.00, 22, '2022-10-12 00:00:00', 3, 'Laptop');
+(11, 'Legion Pro 7i Gen 8', '82WQ002RUS', 'Lenovo', '16-inch Gaming, Intel i9-13900HX, RTX 4080, 32GB RAM, 1TB SSD', 2499.99, 18, '2023-08-15 00:00:00', 1, 'Laptop'),
+(12, 'MacBook Pro 14 M3', 'M3 Pro', 'Apple', '14-inch, Apple M3 Pro chip, 18GB RAM, 512GB SSD, Liquid Retina XDR', 1999.00, 22, '2023-10-30 00:00:00', 6, 'Laptop'),
+(13, 'Dell Latitude 7440', '7440', 'Dell', '14-inch Business Laptop, Intel Core i7-1365U, 16GB RAM, 512GB SSD', 1549.00, 25, '2023-06-20 00:00:00', 2, 'Laptop'),
+(14, 'HP Envy x360 15', '15-ew0023dx', 'HP', '15.6-inch 2-in-1, Intel Core i7, 16GB RAM, 512GB SSD, Touchscreen', 1049.99, 30, '2023-07-01 00:00:00', 4, 'Laptop'),
+(15, 'Acer Aspire 5 Slim', 'A515-45-R74Z', 'Acer', '15.6-inch Student Laptop, AMD Ryzen 5 5500U, 8GB RAM, 256GB SSD', 499.99, 45, '2023-04-10 00:00:00', 5, 'Laptop'),
+(16, 'ProArt Studiobook 16 OLED', 'H7604', 'Asus', '16-inch Creator Laptop, Intel Core i9, 32GB RAM, 1TB SSD, RTX 4070', 2799.50, 12, '2023-09-05 00:00:00', 2, 'Laptop'),
+(17, 'Razer Naga V2 Pro', 'RZ01-04400100-R3U1', 'Razer', 'Wireless MMO Gaming Mouse with Swappable Side Plates', 179.99, 60, '2022-11-10 00:00:00', 7, 'Accessory'),
+(18, 'Samsung T7 Shield 2TB SSD', 'MU-PE2T0S/AM', 'Samsung', '2TB Portable SSD, Rugged, USB 3.2 Gen 2', 159.99, 70, '2023-01-15 00:00:00', 13, 'External Storage (HDD/SSD)'),
+(19, 'CalDigit TS4 Dock', 'TS4', 'CalDigit', 'Thunderbolt 4 Docking Station, 18 Ports, 98W Charging', 399.95, 20, '2022-08-01 00:00:00', 12, 'Docking Stations'),
+(20, 'Microsoft Office Home & Business 2021', 'T5D-03518', 'Microsoft', 'One-time purchase for 1 PC or Mac', 249.99, 100, '2021-10-05 00:00:00', 15, 'Software (OS & Productivity)'),
+(21, 'Tomtoc 360 Laptop Sleeve 14"', 'A13-C02D', 'Tomtoc', 'Protective sleeve for 14-inch laptops, CornerArmor', 25.99, 80, '2023-03-01 00:00:00', 11, 'Laptop Bags & Sleeves'),
+(22, 'Keychron K2 Pro Keyboard', 'K2P-H3', 'Keychron', 'QMK/VIA Wireless Custom Mechanical Keyboard', 189.00, 40, '2023-05-20 00:00:00', 14, 'Keyboards & Mice (External)'),
+(23, 'LG UltraGear 27GP850-B', '27GP850-B', 'LG', '27-inch QHD Nano IPS Gaming Monitor, 165Hz, 1ms', 399.99, 28, '2022-06-10 00:00:00', 8, 'Monitors'),
+(24, 'Crucial P5 Plus 1TB NVMe SSD', 'CT1000P5PSSD8', 'Crucial', '1TB PCIe Gen4 NVMe M.2 Internal Gaming SSD', 89.99, 55, '2021-08-17 00:00:00', 9, 'Laptop Components'),
+(25, 'Used Dell XPS 13 (2020)', 'XPS13-9300-U', 'Dell', 'Refurbished, Intel Core i5, 8GB RAM, 256GB SSD, Good Condition', 699.00, 5, '2020-04-01 00:00:00', 10, 'Used & Refurbished Laptops');
+(26, 'Alienware m16 R2', 'AWm16R2', 'Alienware', '16-inch QHD+ 240Hz Gaming Laptop, Intel Core Ultra 7, RTX 4070, 16GB RAM, 1TB SSD', 2199.99, 15, '2023-08-15 00:00:00', 1, 'Laptop'),
+(27, 'HP Dragonfly Pro Chromebook', 'DragonflyProCB', 'HP', '14-inch 1200p Touchscreen Chromebook, Intel Core i5, 16GB RAM, 256GB SSD', 999.00, 20, '2023-07-01 00:00:00', 3, 'Laptop'),
+(28, 'Lenovo Yoga 7i 16 (2024)', 'Yoga7i-16IML9', 'Lenovo', '16-inch 2-in-1 Laptop, Intel Core Ultra 5, 16GB RAM, 512GB SSD, Touchscreen', 899.99, 25, '2023-07-01 00:00:00', 4, 'Laptop'),
+(29, 'ASUS Vivobook Go 15 OLED', 'E1504FA', 'Asus', '15.6-inch OLED Student Laptop, AMD Ryzen 5 7520U, 8GB RAM, 512GB SSD', 549.00, 30, '2023-04-10 00:00:00', 5, 'Laptop'),
+(30, 'Apple Mac mini M2', 'MNH73LL/A', 'Apple', 'Desktop Computer, Apple M2 chip, 8GB RAM, 256GB SSD', 599.00, 18, '2023-10-30 00:00:00', 6, 'Desktop'),
+(31, 'Anker 737 Power Bank (PowerCore 24K)', 'A1289', 'Anker', '24,000mAh Portable Charger, 140W Output, Smart Digital Display', 149.99, 50, '2023-03-01 00:00:00', 7, 'Accessory'),
+(32, 'Samsung Odyssey G9 49" Monitor', 'LS49CG954SNXZA', 'Samsung', '49-inch Dual QHD Curved Gaming Monitor, 240Hz, 1ms', 1299.99, 10, '2022-06-10 00:00:00', 8, 'Monitor'),
+(33, 'Corsair Vengeance LPX 32GB RAM', 'CMK32GX4M2E3200C16', 'Corsair', '32GB (2x16GB) DDR4 3200MHz C16 Desktop Memory Kit', 69.99, 40, '2021-08-17 00:00:00', 9, 'Laptop Components'),
+(34, 'Logitech K380 Multi-Device Bluetooth Keyboard', '920-009599', 'Logitech', 'Slim, multi-device wireless keyboard for Mac, Windows, ChromeOS, Android, iOS', 39.99, 75, '2023-05-20 00:00:00', 14, 'Keyboards & Mice (External)'),
+(35, 'Windows 11 Pro OEM', 'FQC-10529', 'Microsoft', 'Windows 11 Professional 64-bit OEM DVD', 149.00, 30, '2021-10-05 00:00:00', 15, 'Software (OS & Productivity)'),
+(36, 'Thule Gauntlet MacBook Sleeve 16"', '3204523', 'Thule', 'Rugged protective sleeve for 16-inch MacBook Pro', 59.95, 25, '2023-03-01 00:00:00', 11, 'Laptop Bags & Sleeves'),
+(37, 'WD Black SN850X 2TB NVMe SSD', 'WDS200T2X0E', 'Western Digital', '2TB NVMe Internal Gaming SSD Gen4 PCIe, M.2 2280, Up to 7,300 MB/s', 149.99, 33, '2021-08-17 00:00:00', 9, 'Laptop Components'),
+(38, 'Refurbished HP EliteBook 840 G8', 'Elite840G8-R', 'HP', '14-inch Business Laptop, Intel Core i5, 16GB RAM, 256GB SSD, Grade A', 749.00, 8, '2020-04-01 00:00:00', 10, 'Used & Refurbished Laptops'),
+(39, 'Belkin Thunderbolt 3 Dock Core', 'F4U110bt', 'Belkin', 'Thunderbolt 3 and USB-C Docking Station, 7 Ports, 4K HDMI', 169.99, 15, '2022-08-01 00:00:00', 12, 'Docking Stations'),
+(40, 'LaCie Rugged Mini 4TB External HDD', 'LAC9000633', 'LaCie', '4TB USB 3.0 External Hard Drive, Shock, Drop, Crush and Rain Resistant', 149.99, 22, '2023-01-15 00:00:00', 13, 'External Storage (HDD/SSD)'),
+(41, 'ASUS ROG Strix Scar 18', 'G834JY', 'Asus', '18-inch Nebula HDR Gaming Laptop, Intel Core i9-14900HX, RTX 4090, 32GB RAM, 2TB SSD', 3899.99, 12, '2024-01-10 00:00:00', 1, 'Laptop'),
+(42, 'Microsoft Surface Laptop Studio 2', 'Studio2-i7-32-1TB-4050', 'Microsoft', '14.4-inch PixelSense Flow Touchscreen, Intel Core i7-13700H, 32GB RAM, 1TB SSD, RTX 4050', 2799.99, 18, '2023-10-03 00:00:00', 4, 'Laptop'), -- 2-in-1 / Creator
+(43, 'Lenovo ThinkBook 16 Gen 6', '21KHA000US', 'Lenovo', '16-inch Business Laptop, AMD Ryzen 7 7730U, 16GB RAM, 512GB SSD', 849.00, 30, '2023-09-15 00:00:00', 2, 'Laptop'),
+(44, 'Acer Chromebook Spin 714', 'CP714-2WN-54PK', 'Acer', '14-inch 2-in-1 Chromebook, Intel Core i5-1335U, 8GB RAM, 256GB SSD, Touchscreen', 699.99, 25, '2023-07-20 00:00:00', 4, 'Laptop'), -- 2-in-1 / Chromebook
+(45, 'Apple iMac 24 M3', 'MQRJ3LL/A', 'Apple', '24-inch 4.5K Retina display, Apple M3 chip, 8GB RAM, 256GB SSD, Blue', 1299.00, 20, '2023-10-30 00:00:00', 6, 'Desktop'), -- Mac Desktop
+(46, 'Logitech MX Keys S Combo', '920-011599', 'Logitech', 'MX Keys S Keyboard and MX Master 3S Mouse Combo, Graphite', 199.99, 40, '2023-05-30 00:00:00', 14, 'Keyboards & Mice (External)'),
+(47, 'BenQ PD2705U DesignVue Monitor', 'PD2705U', 'BenQ', '27-inch 4K UHD IPS Monitor for Designers, USB-C, AQCOLOR', 549.99, 15, '2022-11-01 00:00:00', 8, 'Monitors'),
+(48, 'Samsung 990 PRO 2TB NVMe SSD', 'MZ-V9P2T0BW', 'Samsung', '2TB PCIe Gen4 NVMe M.2 Internal Gaming SSD, Up to 7,450 MB/s', 169.99, 35, '2022-10-20 00:00:00', 9, 'Laptop Components'),
+(49, 'Adobe Creative Cloud All Apps (1 Year)', 'AdobeCC-1Yr', 'Adobe', '1-Year Subscription to all Adobe Creative Cloud apps', 599.88, 50, '2024-01-01 00:00:00', 15, 'Software (OS & Productivity)'),
+(50, 'Peak Design Everyday Backpack 20L', 'BEDB-20-BK-2', 'Peak Design', 'Versatile camera and everyday backpack, Black', 279.95, 22, '2021-05-01 00:00:00', 11, 'Laptop Bags & Sleeves'),
+(51, 'Used MacBook Pro 16 (2021 M1 Pro)', 'MBP16M1P-R', 'Apple', 'Refurbished, 16-inch, M1 Pro, 16GB RAM, 512GB SSD, Space Gray, Excellent', 1799.00, 7, '2021-10-18 00:00:00', 10, 'Used & Refurbished Laptops'),
+(52, 'OWC Thunderbolt Hub', 'OWCTB4HUB5P', 'OWC', 'Thunderbolt Hub, 4 Thunderbolt 4 Ports, 1 USB-A Port, 60W Charging', 179.00, 18, '2023-02-10 00:00:00', 12, 'Docking Stations'),
+(53, 'SanDisk Extreme Portable SSD 2TB V2', 'SDSSDE61-2T00-G25', 'SanDisk', '2TB USB-C 3.2 Gen 2 Portable SSD, Up to 1050MB/s Read Speed', 149.99, 30, '2021-09-01 00:00:00', 13, 'External Storage (HDD/SSD)'),
+(54, 'Razer Huntsman V3 Pro Keyboard', 'RZ03-04970200-R3M1', 'Razer', 'Analog Optical Gaming Keyboard with Rapid Trigger Mode', 249.99, 28, '2023-10-12 00:00:00', 14, 'Keyboards & Mice (External)'),
+(55, 'Dell Premier Sleeve 14', 'PE1420V', 'Dell', 'Protective sleeve for 14-inch Dell laptops, Eco-friendly', 34.99, 45, '2020-01-15 00:00:00', 11, 'Laptop Bags & Sleeves'),
+(56, 'Framework Laptop 13 (DIY Edition)', 'FWL13-DIY-AMD7040', 'Framework', '13.5-inch Modular Laptop, AMD Ryzen 7 7840U, User-Upgradeable Components, No RAM/Storage/OS', 999.00, 15, '2023-08-01 00:00:00', 9, 'Laptop'), -- Components/DIY
+(57, 'LG Gram Style 14 (2024)', '14Z90RS-K.ADS9U1', 'LG', '14-inch Ultra-Lightweight Laptop, Intel Core Ultra 7, 16GB RAM, 1TB SSD, Iridescent Finish', 1499.99, 20, '2024-02-01 00:00:00', 3, 'Laptop'), -- Ultrabook
+(58, 'Razer DeathAdder V3 Pro Mouse', 'RZ01-04630100-R3U1', 'Razer', 'Ultra-lightweight Wireless Ergonomic Esports Mouse, Focus Pro 30K Optical Sensor', 149.99, 40, '2022-08-11 00:00:00', 7, 'Accessory'),
+(59, 'Sony WH-1000XM5 Headphones', 'WH1000XM5/B', 'Sony', 'Industry Leading Noise Canceling Wireless Headphones, Black', 348.00, 30, '2022-05-12 00:00:00', 7, 'Accessory'),
+(60, 'Elgato Stream Deck MK.2', '10GBA9901', 'Elgato', 'Studio Controller, 15 Macro Keys, Trigger Actions in Apps and Software', 149.99, 25, '2021-07-15 00:00:00', 7, 'Accessory'),
+(61, 'Noctua NH-D15 CPU Cooler', 'NH-D15 chromax.black', 'Noctua', 'Premium CPU Cooler with 2x NF-A15 PWM 140mm Fans (Black)', 109.95, 18, '2019-10-29 00:00:00', 9, 'Laptop Components'), -- Desktop component, but common for enthusiasts
+(62, 'Used Lenovo ThinkPad T14 Gen 3 (AMD)', 'T14G3AMD-R', 'Lenovo', 'Refurbished 14-inch Business Laptop, AMD Ryzen 5 PRO, 16GB RAM, 512GB SSD', 899.00, 10, '2022-07-01 00:00:00', 10, 'Used & Refurbished Laptops'),
+(63, 'Satechi USB-C Multiport Adapter 8K with Ethernet V3', 'ST-UCMXAM', 'Satechi', 'USB-C Hub with 8K HDMI, Ethernet, USB-A, SD Card Readers, Pass-Through Charging', 99.99, 22, '2023-06-01 00:00:00', 12, 'Docking Stations'),
+(64, 'Seagate FireCuda 530 2TB NVMe SSD with Heatsink', 'ZP2000GM3A023', 'Seagate', '2TB NVMe Internal SSD Gen4 PCIe, M.2 2280, Up to 7,300 MB/s, with Heatsink', 179.99, 28, '2021-07-29 00:00:00', 9, 'Laptop Components'),
+(65, 'Microsoft Sculpt Ergonomic Desktop Keyboard & Mouse', 'L5V-00001', 'Microsoft', 'Ergonomic Keyboard, Mouse, and Number Pad Set for Comfort', 129.95, 33, '2013-08-20 00:00:00', 14, 'Keyboards & Mice (External)'),
+(66, 'ASUS Zenbook S 13 OLED (2024)', 'UX5304MA', 'Asus', '13.3-inch Ultra-Portable OLED Laptop, Intel Core Ultra 7, 16GB RAM, 1TB SSD, Basalt Gray', 1399.99, 25, '2024-03-01 00:00:00', 3, 'Laptop'),
+(67, 'Dell XPS 17 (9730)', 'XPS9730-7308SLV-PUS', 'Dell', '17-inch Creator Laptop, Intel Core i7-13700H, 32GB RAM, 1TB SSD, NVIDIA RTX 4060', 2599.99, 15, '2023-05-15 00:00:00', 2, 'Laptop'),
+(68, 'Logitech G Pro X Superlight 2 Mouse', '910-006630', 'Logitech G', 'Next-gen Lightweight Wireless Gaming Mouse, LIGHTFORCE Hybrid Switches, HERO 2 Sensor', 159.00, 50, '2023-09-05 00:00:00', 7, 'Accessory'),
+(69, 'Bose QuietComfort Ultra Headphones', '880063-0100', 'Bose', 'Premium Noise Cancelling Wireless Headphones with Immersive Audio, Black', 429.00, 28, '2023-09-14 00:00:00', 7, 'Accessory'),
+(70, 'GoPro HERO12 Black', 'CHDHX-121-CN', 'GoPro', 'Waterproof Action Camera with 5.3K60 Ultra HD Video, HyperSmooth 6.0', 399.99, 30, '2023-09-06 00:00:00', 7, 'Accessory'), -- Action Cam, but fits accessories
+(71, 'AMD Ryzen 9 7950X3D CPU', '100-100000908WOF', 'AMD', '16-Core, 32-Thread Unlocked Desktop Processor with 3D V-Cache Technology', 699.00, 12, '2023-02-28 00:00:00', 9, 'Laptop Components'), -- Desktop CPU
+(72, 'Refurbished Apple MacBook Air M1 (2020)', 'MGN63LL/A-R', 'Apple', 'Refurbished 13.3-inch, M1 Chip, 8GB RAM, 256GB SSD, Space Gray, Certified', 799.00, 18, '2020-11-10 00:00:00', 10, 'Used & Refurbished Laptops'),
+(73, 'Anker PowerExpand Elite 13-in-1 Thunderbolt 3 Dock', 'A8396', 'Anker', '13-in-1 Docking Station, 85W Charging for Laptop, Dual Monitor Display, 4K HDMI', 299.99, 20, '2020-08-01 00:00:00', 12, 'Docking Stations'),
+(74, 'Kingston FURY Renegade 4TB NVMe SSD', 'SFYRD/4000G', 'Kingston', '4TB PCIe Gen4 NVMe M.2 Internal Gaming SSD, Up to 7,300MB/s Read', 299.99, 25, '2022-05-10 00:00:00', 9, 'Laptop Components'),
+(75, 'SteelSeries Apex Pro TKL (2023) Keyboard', '64856', 'SteelSeries', 'Adjustable Actuation Esports Keyboard, OmniPoint 2.0 Switches, TKL Form Factor', 189.99, 30, '2022-10-04 00:00:00', 14, 'Keyboards & Mice (External)'),
+(76, 'HP Spectre Foldable PC', 'SpectreFold17', 'HP', '17-inch Foldable OLED PC, Intel Core i7, 16GB RAM, 1TB SSD', 4999.99, 5, '2023-09-14 00:00:00', 4, 'Laptop'), -- 2-in-1 / Foldable
+(77, 'Samsung Galaxy Book3 Ultra', 'NP960XFH-XA1US', 'Samsung', '16-inch AMOLED Creator Laptop, Intel Core i9, 32GB RAM, 1TB SSD, RTX 4070', 2399.99, 18, '2023-02-01 00:00:00', 2, 'Laptop'),
+(78, 'Corsair K100 AIR WIRELESS RGB Keyboard', 'CH-913A01U-NA', 'Corsair', 'Ultra-Thin Mechanical Gaming Keyboard, Cherry MX Ultra Low Profile Switches', 279.99, 25, '2022-09-20 00:00:00', 14, 'Keyboards & Mice (External)'),
+(79, 'Shure MV7 USB Podcast Microphone', 'MV7-K', 'Shure', 'USB/XLR Dynamic Microphone for Podcasting, Recording, Streaming', 249.00, 30, '2020-10-26 00:00:00', 7, 'Accessory'), -- Microphone
+(80, 'WD My Passport SSD 4TB', 'WDBAGF0040BGY-WESN', 'Western Digital', '4TB Portable NVMe SSD, USB 3.2 Gen-2, Gray', 299.99, 20, '2021-04-15 00:00:00', 13, 'External Storage (HDD/SSD)'),
+(81, 'NVIDIA GeForce RTX 4090 Founders Edition', '900-1G136-2530-000', 'NVIDIA', 'Flagship Gaming Graphics Card, 24GB GDDR6X', 1599.00, 8, '2022-10-12 00:00:00', 9, 'Laptop Components'), -- Desktop GPU
+(82, 'Refurbished Microsoft Surface Pro 8', 'SurfacePro8-i5-8-256-R', 'Microsoft', 'Refurbished 13-inch Tablet, Intel Core i5, 8GB RAM, 256GB SSD, Platinum', 759.00, 12, '2021-10-05 00:00:00', 10, 'Used & Refurbished Laptops'), -- Tablet/Refurbished
+(83, 'Plugable UD-ULTC4K Thunderbolt 3 and USB-C Dock', 'UD-ULTC4K', 'Plugable', 'Triple 4K Display Docking Station for macOS and Windows', 279.00, 15, '2020-11-01 00:00:00', 12, 'Docking Stations'),
+(84, 'G.SKILL Trident Z5 RGB 32GB DDR5 6000MHz', 'F5-6000J3040F16GX2-TZ5RK', 'G.SKILL', '32GB (2x16GB) DDR5 6000MHz CL30 Desktop Memory Kit, Black', 124.99, 28, '2021-11-01 00:00:00', 9, 'Laptop Components'), -- Desktop RAM
+(85, 'Everki Atlas Laptop Backpack (13-17.3 inch)', 'EKP121', 'Everki', 'Checkpoint Friendly Laptop Backpack with Adaptable Compartment', 149.99, 22, '2015-01-01 00:00:00', 11, 'Laptop Bags & Sleeves'),
+(86, 'Lenovo Legion Slim 7i Gen 8', 'LegionS7-16IRH8', 'Lenovo', '16-inch Slim Gaming Laptop, Intel Core i7-13700H, RTX 4060, 16GB RAM, 1TB SSD', 1699.99, 22, '2023-06-10 00:00:00', 1, 'Laptop'),
+(87, 'Apple MacBook Pro 16 M3 Max', 'M3Max-16-64-2TB', 'Apple', '16-inch, Apple M3 Max chip, 64GB RAM, 2TB SSD, Liquid Retina XDR ProMotion', 4299.00, 10, '2023-10-30 00:00:00', 6, 'Laptop'),
+(88, 'Logitech MX Anywhere 3S Mouse', '910-006928', 'Logitech', 'Compact Performance Mouse, MagSpeed Scrolling, Works on Glass, Graphite', 79.99, 60, '2023-05-30 00:00:00', 7, 'Accessory'),
+(89, 'Sennheiser Momentum 4 Wireless Headphones', 'M4AEBT', 'Sennheiser', 'Adaptive Noise Cancellation Headphones with Superior Sound, 60-Hour Battery', 379.95, 25, '2022-08-09 00:00:00', 7, 'Accessory'),
+(90, 'DJI Osmo Action 4 Adventure Combo', 'CP.OS.00000269.01', 'DJI', '4K/120fps Waterproof Action Camera with Extra Battery and Accessories', 399.00, 18, '2023-08-02 00:00:00', 7, 'Accessory'),
+(91, 'Intel Core i9-14900K CPU', 'BX8071514900K', 'Intel', '24-Core (8P+16E), 32-Thread Unlocked Desktop Processor, Up to 6.0 GHz', 589.00, 15, '2023-10-17 00:00:00', 9, 'Laptop Components'), -- Desktop CPU
+(92, 'Refurbished Dell Latitude 5430', 'Lat5430-i7-16-512-R', 'Dell', 'Refurbished 14-inch Business Laptop, Intel Core i7, 16GB RAM, 512GB SSD, Grade A+', 849.00, 14, '2022-03-15 00:00:00', 10, 'Used & Refurbished Laptops'),
+(93, 'Kensington SD5780T Thunderbolt 4 Dock', 'K33040NA', 'Kensington', 'Thunderbolt 4 Docking Station, Dual 4K, 96W Power Delivery', 329.99, 16, '2022-12-01 00:00:00', 12, 'Docking Stations'),
+(94, 'Crucial T700 2TB Gen5 NVMe SSD', 'CT2000T700SSD3', 'Crucial', '2TB PCIe Gen5 NVMe M.2 Internal SSD, Up to 12,400MB/s Read', 259.99, 20, '2023-05-30 00:00:00', 9, 'Laptop Components'),
+(95, 'NuPhy Air75 V2 QMK/VIA Mechanical Keyboard', 'Air75V2-IonicWhite', 'NuPhy', '75% Low-Profile Wireless Mechanical Keyboard, Hot-Swappable Gateron Switches', 139.95, 28, '2023-08-22 00:00:00', 14, 'Keyboards & Mice (External)'),
+(101, 'MSI Titan GT77 HX (2024)', 'TitanGT77HX-14V', 'MSI', '17.3-inch 4K Mini-LED Gaming Laptop, Intel Core i9-14900HX, RTX 4090, 64GB RAM, 4TB SSD', 4999.00, 7, '2024-02-15 00:00:00', 1, 'Laptop'),
+(102, 'Dell Precision 7780 Mobile Workstation', 'Precision7780', 'Dell', '17.3-inch Workstation, Intel Core i9-13950HX, NVIDIA RTX 5000 Ada, 64GB RAM, 2TB SSD', 4599.00, 10, '2023-07-01 00:00:00', 2, 'Laptop'),
+(103, 'SteelSeries Arctis Nova Pro Wireless Headset', '61520', 'SteelSeries', 'Multi-System Gaming Headset with Active Noise Cancellation, Dual Battery', 349.99, 35, '2022-06-07 00:00:00', 7, 'Accessory'),
+(104, 'Insta360 X3 Action Camera', 'CINSAAQ/B', 'Insta360', '360 Waterproof Action Camera with 1/2" 48MP Sensors, 5.7K 360 Video', 449.99, 25, '2022-09-08 00:00:00', 7, 'Accessory'),
+(105, 'Synology DiskStation DS923+ NAS', 'DS923+', 'Synology', '4-Bay NAS for Home and Small Business, Expandable Storage', 599.99, 15, '2022-11-16 00:00:00', 13, 'External Storage (HDD/SSD)'), -- NAS fits here
+(106, 'AMD Radeon RX 7900 XTX Graphics Card', 'RX7900XTX', 'AMD', 'High-Performance Gaming Graphics Card, 24GB GDDR6', 999.00, 11, '2022-12-13 00:00:00', 9, 'Laptop Components'), -- Desktop GPU
+(107, 'Refurbished Lenovo Yoga 9i 14 (Gen 7)', 'Yoga9i-14IAP7-R', 'Lenovo', 'Refurbished 14-inch 2-in-1 OLED Laptop, Intel Core i7, 16GB RAM, 512GB SSD', 1099.00, 9, '2022-05-01 00:00:00', 10, 'Used & Refurbished Laptops'),
+(108, 'CalDigit Element Hub', 'ElementHubTB4', 'CalDigit', 'Thunderbolt 4 / USB4 Hub, 4x Thunderbolt 4 Ports, 4x USB-A 10Gb/s Ports', 249.99, 17, '2021-03-01 00:00:00', 12, 'Docking Stations'),
+(109, 'Sabrent Rocket 4 Plus-G 2TB SSD (Gaming Optimized)', 'SB-RKTG-2TB', 'Sabrent', '2TB NVMe PCIe 4.0 M.2 Internal SSD for Gaming, Up to 7,000MB/s Read', 199.99, 22, '2023-03-15 00:00:00', 9, 'Laptop Components'),
+(110, 'Herman Miller Aeron Chair (Refurbished)', 'Aeron-R-B', 'Herman Miller', 'Refurbished Ergonomic Office Chair, Size B, Graphite', 899.00, 5, '2024-01-01 00:00:00', 7, 'Accessory'),
+(111, 'ASUS ROG Ally X (2024)', 'RC72L', 'Asus', 'Upgraded Handheld Gaming PC, AMD Ryzen Z1 Extreme, 24GB RAM, 1TB SSD, Improved Battery', 799.99, 30, '2024-06-02 00:00:00', 1, 'Gaming Handheld'),
+(112, 'Framework Laptop 16 (DIY Edition)', 'FWL16-DIY-HX', 'Framework', '16-inch Modular Laptop, Intel Core i7 HX-Series or AMD Ryzen, Upgradeable Graphics Module', 1399.00, 12, '2023-12-01 00:00:00', 9, 'Laptop'),
+(113, 'Sony DualSense Edge Wireless Controller', 'CFI-ZCP1W', 'Sony', 'High-Performance Customizable PS5 Controller with Swappable Components', 199.99, 40, '2023-01-26 00:00:00', 7, 'Accessory'),
+(114, 'Apple Vision Pro', 'VisionPro-256GB', 'Apple', 'Spatial Computer with micro-OLED displays, M2 and R1 chips, 256GB Storage', 3499.00, 5, '2024-02-02 00:00:00', 7, 'Accessory'), -- VR/AR Headset
+(115, 'TerraMaster F4-423 NAS', 'F4-423', 'TerraMaster', '4-Bay High Performance NAS for SMB, Intel Celeron N5095, Dual 2.5GbE', 499.99, 18, '2022-03-01 00:00:00', 13, 'External Storage (HDD/SSD)'),
+(116, 'NVIDIA RTX 4070 Ti SUPER Founders Edition', 'RTX4070TiS-FE', 'NVIDIA', 'High-Performance Gaming Graphics Card, 16GB GDDR6X', 799.00, 14, '2024-01-24 00:00:00', 9, 'Laptop Components'),
+(117, 'Refurbished HP Spectre x360 16 (2022)', 'SpectreX360-16-R', 'HP', 'Refurbished 16-inch 2-in-1 OLED Laptop, Intel Core i7, 16GB RAM, 1TB SSD', 1299.00, 8, '2022-09-01 00:00:00', 10, 'Used & Refurbished Laptops'),
+(118, 'Anker 747 GaNPrime Charger (150W)', 'A2340', 'Anker', '4-Port USB C GaN Charger, 3 USB-C, 1 USB-A, for Laptops, Phones, Tablets', 109.99, 25, '2022-07-25 00:00:00', 12, 'Docking Stations'), -- Charger, fits here
+(119, 'SK hynix Platinum P41 2TB NVMe SSD', 'SHPP41-2000GM-2', 'SK hynix', '2TB PCIe Gen4 NVMe M.2 Internal SSD, Up to 7,000MB/s Read', 149.99, 30, '2022-05-24 00:00:00', 9, 'Laptop Components'),
+(120, 'Das Keyboard 6 Professional Mechanical Keyboard', 'DKP6-PBT-MXBN', 'Das Keyboard', 'Full-Size Mechanical Keyboard, Cherry MX Brown Switches, PBT Keycaps', 199.00, 20, '2022-11-01 00:00:00', 14, 'Keyboards & Mice (External)');
