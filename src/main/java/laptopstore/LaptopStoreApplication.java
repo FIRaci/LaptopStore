@@ -1,17 +1,21 @@
 package laptopstore;
 
-import com.formdev.flatlaf.FlatLightLaf;
-// KHÔNG CẦN IMPORT CÁC MODEL Ở ĐÂY NỮA VÌ KHÔNG DÙNG LIST TĨNH
-// import laptopstore.model.*;
-import laptopstore.screen.AdminDashboardScreen;
-import laptopstore.util.DatabaseConnection; // SỬ DỤNG CLASS KẾT NỐI CỦA BẠN
-
-import javax.swing.*;
 import java.awt.EventQueue;
 import java.awt.Image;
-import java.net.URL;
-import java.sql.Connection; // Cho việc kiểm tra kết nối
-import java.sql.SQLException; // Cho việc kiểm tra kết nối
+import java.net.URL; // SỬ DỤNG CLASS KẾT NỐI CỦA BẠN
+import java.sql.Connection;
+import java.sql.SQLException;
+
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane; // Cho việc kiểm tra kết nối
+import javax.swing.UIManager; // Cho việc kiểm tra kết nối
+import javax.swing.UnsupportedLookAndFeelException;
+
+import com.formdev.flatlaf.FlatLightLaf;
+
+import laptopstore.screen.AdminDashboardScreen;
+import laptopstore.util.DatabaseConnection;
 
 public class LaptopStoreApplication {
 
@@ -42,7 +46,7 @@ public class LaptopStoreApplication {
             // Có thể dùng Look and Feel mặc định của hệ thống nếu FlatLaf lỗi
         }
 
-        // 2. XÓA LỜI GỌI initializeMockData();
+        // 2. XÓA LỜI GỌI initializeMockData(); 
         // initializeMockData();
 
         // 3. (Khuyến nghị) Kiểm tra kết nối CSDL trước khi chạy UI

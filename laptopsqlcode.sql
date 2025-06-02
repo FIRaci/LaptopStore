@@ -1,3 +1,5 @@
+SET client_encoding = 'UTF8';
+
 -- Xóa các bảng cũ nếu tồn tại (theo thứ tự ngược lại để tránh lỗi khóa ngoại)
 DROP TABLE IF EXISTS ORDER_DETAILS CASCADE;
 DROP TABLE IF EXISTS ORDERS CASCADE;
