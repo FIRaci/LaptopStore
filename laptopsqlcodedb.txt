@@ -11,3 +11,4 @@ psql -U postgres
 \i D:/DB_LAB/LaptopStore/payments.sql
 \i D:/DB_LAB/LaptopStore/orders.sql
 \i D:/DB_LAB/LaptopStore/order_details.sql
+\i D:/DB_LAB/LaptopStore/func.sql
