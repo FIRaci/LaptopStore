@@ -101,7 +101,6 @@ CREATE TABLE ORDER_DETAILS (
     order_id INTEGER NOT NULL,
     product_id INTEGER NOT NULL,
     quantity INT NOT NULL CHECK (quantity > 0),
-    unit_price NUMERIC(19, 2) NOT NULL, -- Đã thêm cột unit_price
     CONSTRAINT fk_order_details_order FOREIGN KEY (order_id)
         REFERENCES ORDERS (order_id)
         ON DELETE CASCADE ON UPDATE CASCADE,

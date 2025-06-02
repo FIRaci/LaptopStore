@@ -77,7 +77,7 @@ public class OrderDataStore {
             if (!order.getOrderItems().isEmpty()) {
                 try (PreparedStatement pstmtOrderItem = conn.prepareStatement(insertOrderItemSql, Statement.RETURN_GENERATED_KEYS)) {
                     for (OrderItem item : order.getOrderItems()) {
-                        if (item.getProductId() <=0 || item.getQuantity() <=0 || item.getUnitPrice() == null || item.getUnitPrice().compareTo(BigDecimal.ZERO) < 0) {
+                        if (item.getProductId() <=0 || item.getQuantity() <=0) {
                             conn.rollback(); // Rollback nếu có item không hợp lệ
                             throw new SQLException("Invalid OrderItem data: " + item);
                         }
@@ -86,7 +86,6 @@ public class OrderDataStore {
                         pstmtOrderItem.setInt(1, item.getOrderId());
                         pstmtOrderItem.setInt(2, item.getProductId());
                         pstmtOrderItem.setInt(3, item.getQuantity());
-                        pstmtOrderItem.setBigDecimal(4, item.getUnitPrice()); // Đã là BigDecimal
 
                         int itemAffectedRows = pstmtOrderItem.executeUpdate();
                         if (itemAffectedRows > 0) {
@@ -270,10 +269,8 @@ public class OrderDataStore {
         int orderId = rs.getInt("order_id");
         int productId = rs.getInt("product_id");
         int quantity = rs.getInt("quantity");
-        BigDecimal unitPriceBd = rs.getBigDecimal("unit_price"); // Lấy trực tiếp BigDecimal
 
-        // Sử dụng constructor của OrderItem đã được cập nhật
-        OrderItem item = new OrderItem(odId, orderId, productId, quantity, unitPriceBd);
+        OrderItem item = new OrderItem(odId, orderId, productId, quantity);
         // productName sẽ được set ở hàm gọi sau khi JOIN
         return item;
     }

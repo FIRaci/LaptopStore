@@ -2,9 +2,12 @@ package laptopstore.model;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import laptopstore.data.ProductDataStore;
 
 public class Order {
     private int orderId;
@@ -58,18 +61,20 @@ public class Order {
         }
     }
 
-    public void calculateAndSetTotals() {
+    public void calculateAndSetTotals() throws SQLException {
         BigDecimal currentNetAmount = BigDecimal.ZERO;
         if (this.orderItems != null) {
+            ProductDataStore productDb = new ProductDataStore();
             for (OrderItem item : this.orderItems) {
-                if (item.getUnitPrice() != null && item.getQuantity() > 0) {
-                    BigDecimal itemTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                Product product = productDb.getProductById(item.getProductId());
+                if (product != null && product.getPrice() != null && item.getQuantity() > 0) {
+                    BigDecimal itemTotal = product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
                     currentNetAmount = currentNetAmount.add(itemTotal);
                 }
             }
         }
         this.netAmount = currentNetAmount;
-        this.tax = this.netAmount.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP); // Ví dụ thuế 10%
+        this.tax = this.netAmount.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
         this.totalAmount = this.netAmount.add(this.tax);
     }
 

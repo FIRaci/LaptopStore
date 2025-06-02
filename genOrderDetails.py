@@ -16,17 +16,16 @@ def generate_order_details():
                 order_id,  # order_id
                 random.randint(1, 120),  # product_id
                 random.randint(1, 5),  # quantity
-                round(random.uniform(100, 3000), 2)  # unit_price
             )
             
             current_batch.append(
-                f"({order_detail[0]}, {order_detail[1]}, {order_detail[2]}, {order_detail[3]}, {order_detail[4]})"
+                f"({order_detail[0]}, {order_detail[1]}, {order_detail[2]}, {order_detail[3]})"
             )
             current_id += 1
             
             if len(current_batch) >= batch_size:
                 sql_statements.append(
-                    "INSERT INTO ORDER_DETAILS (od_id, order_id, product_id, quantity, unit_price) VALUES\n" +
+                    "INSERT INTO ORDER_DETAILS (od_id, order_id, product_id, quantity) VALUES\n" +
                     ",\n".join(current_batch) + ";"
                 )
                 current_batch = []
@@ -34,7 +33,7 @@ def generate_order_details():
     # Add any remaining records in the last batch
     if current_batch:
         sql_statements.append(
-            "INSERT INTO ORDER_DETAILS (od_id, order_id, product_id, quantity, unit_price) VALUES\n" +
+            "INSERT INTO ORDER_DETAILS (od_id, order_id, product_id, quantity) VALUES\n" +
             ",\n".join(current_batch) + ";"
         )
 

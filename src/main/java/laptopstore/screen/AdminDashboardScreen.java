@@ -1611,12 +1611,14 @@ public class AdminDashboardScreen {
         orderItemTable = new JTable(orderItemTableModel);
         styleTable(orderItemTable);
         // Căn lề cho OrderItem Table
-        DefaultTableCellRenderer centerRendererItem = new DefaultTableCellRenderer(); centerRendererItem.setHorizontalAlignment(JLabel.CENTER);
-        DefaultTableCellRenderer rightRendererItem = new DefaultTableCellRenderer(); rightRendererItem.setHorizontalAlignment(JLabel.RIGHT);
+        DefaultTableCellRenderer centerRendererItem = new DefaultTableCellRenderer(); 
+        centerRendererItem.setHorizontalAlignment(JLabel.CENTER);
+        DefaultTableCellRenderer rightRendererItem = new DefaultTableCellRenderer(); 
+        rightRendererItem.setHorizontalAlignment(JLabel.RIGHT);
+
         orderItemTable.getColumnModel().getColumn(0).setCellRenderer(centerRendererItem); // OD ID
-        orderItemTable.getColumnModel().getColumn(2).setCellRenderer(centerRendererItem); // Qty
-        orderItemTable.getColumnModel().getColumn(3).setCellRenderer(rightRendererItem); // Unit Price
-        orderItemTable.getColumnModel().getColumn(4).setCellRenderer(rightRendererItem); // Item Total
+        orderItemTable.getColumnModel().getColumn(1).setCellRenderer(centerRendererItem); // Product ID
+        orderItemTable.getColumnModel().getColumn(2).setCellRenderer(rightRendererItem);  // Quantity
 
 
         JScrollPane orderItemTableScrollPane = new JScrollPane(orderItemTable);
@@ -1900,9 +1902,6 @@ public class AdminDashboardScreen {
         if (selectedProduct == null) {
             showAlert("Input Error", "Please select a product for the item.", JOptionPane.ERROR_MESSAGE); return;
         }
-        if (selectedProduct.getPrice() == null) {
-            showAlert("Data Error", "Selected product does not have a price defined.", JOptionPane.ERROR_MESSAGE); return;
-        }
 
         try {
             int quantity = parseInt(quantityText, "Quantity");
@@ -1911,34 +1910,26 @@ public class AdminDashboardScreen {
             }
             if (quantity > selectedProduct.getStockQuantity()) {
                 showAlert("Input Error", "Quantity exceeds available stock ("+ selectedProduct.getStockQuantity() +").", JOptionPane.WARNING_MESSAGE);
-                // Không return, cho phép thêm nhưng với số lượng bằng stock
-                // quantity = selectedProduct.getStockQuantity();
-                // orderItemQuantityField.setText(String.valueOf(quantity));
-                // if(quantity <=0) return; // Nếu stock = 0 thì không cho thêm
-                return; // Hoặc đơn giản là không cho phép nếu vượt quá
+                return;
             }
-
 
             Optional<OrderItem> existingItemOpt = tempOrderItems.stream()
                     .filter(item -> item.getProductId() == selectedProduct.getProductId())
                     .findFirst();
 
-            if (existingItemOpt.isPresent()) { // Update existing item in temp list
+            if (existingItemOpt.isPresent()) {
                 OrderItem existingItem = existingItemOpt.get();
                 existingItem.setQuantity(quantity);
-                existingItem.setUnitPrice(selectedProduct.getPrice()); // Luôn cập nhật giá mới nhất từ Product
                 existingItem.setProductName(selectedProduct.getSpecificProductName());
-            } else { // Add new item to temp list
-                // odId và orderId sẽ là 0 hoặc sẽ được gán khi lưu Order chính
-                OrderItem newItem = new OrderItem(0, 0, selectedProduct.getProductId(), quantity, selectedProduct.getPrice());
+            } else {
+                OrderItem newItem = new OrderItem(0, 0, selectedProduct.getProductId(), quantity);
                 newItem.setProductName(selectedProduct.getSpecificProductName());
                 tempOrderItems.add(newItem);
             }
 
-            orderItemTableModel.setItems(new ArrayList<>(tempOrderItems)); // Hiển thị bản sao
+            orderItemTableModel.setItems(new ArrayList<>(tempOrderItems));
             updateTempOrderTotalLabel();
 
-            // Reset item form
             if(orderItemProductCombo.getItemCount() > 0) orderItemProductCombo.setSelectedIndex(0);
             orderItemQuantityField.setText("");
 
@@ -1961,15 +1952,23 @@ public class AdminDashboardScreen {
 
     private void updateTempOrderTotalLabel() {
         BigDecimal currentTotal = BigDecimal.ZERO;
-        for (OrderItem item : tempOrderItems) {
-            if (item.getUnitPrice() != null && item.getQuantity() > 0) {
-                currentTotal = currentTotal.add(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+        try {
+            for (OrderItem item : tempOrderItems) {
+                // Lấy giá từ bảng products
+                Product product = productDb.getProductById(item.getProductId());
+                if (product != null && product.getPrice() != null && item.getQuantity() > 0) {
+                    BigDecimal itemTotal = product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                    currentTotal = currentTotal.add(itemTotal);
+                }
             }
+            // Giả sử thuế 10%
+            BigDecimal tax = currentTotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal finalTotal = currentTotal.add(tax);
+            lblOrderTotalAmount.setText("Current Order Total: " + finalTotal.toPlainString() + " VNĐ (Net: " + currentTotal.toPlainString() + ", Tax: " + tax.toPlainString() +")");
+        } catch (SQLException e) {
+            lblOrderTotalAmount.setText("Error calculating total");
+            e.printStackTrace();
         }
-        // Giả sử thuế 10%
-        BigDecimal tax = currentTotal.multiply(new BigDecimal("0.10")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal finalTotal = currentTotal.add(tax);
-        lblOrderTotalAmount.setText("Current Order Total: " + finalTotal.toPlainString() + " VNĐ (Net: " + currentTotal.toPlainString() + ", Tax: " + tax.toPlainString() +")");
     }
 
 
