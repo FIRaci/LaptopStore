@@ -96,7 +96,6 @@ public class AdminDashboardScreen {
     private JTextArea descriptionAreaProd;
     private JTextField priceFieldProd;
     private JTextField stockFieldProd;
-    private JComboBox<String> productTypeComboProd;
     private JComboBox<Category> categoryComboProd;
     private JXDatePicker publishDatePickerProd;
 
@@ -297,18 +296,22 @@ public class AdminDashboardScreen {
         productTable = new JTable(productTableModel);
         styleTable(productTable);
 
-        DefaultTableCellRenderer leftRendererProd = new DefaultTableCellRenderer(); leftRendererProd.setHorizontalAlignment(JLabel.LEFT);
-        DefaultTableCellRenderer centerRendererProd = new DefaultTableCellRenderer(); centerRendererProd.setHorizontalAlignment(JLabel.CENTER);
-        DefaultTableCellRenderer rightRendererProd = new DefaultTableCellRenderer(); rightRendererProd.setHorizontalAlignment(JLabel.RIGHT);
+        // Căn lề cho Product Table
+        DefaultTableCellRenderer leftRendererProd = new DefaultTableCellRenderer(); 
+        leftRendererProd.setHorizontalAlignment(JLabel.LEFT);
+        DefaultTableCellRenderer centerRendererProd = new DefaultTableCellRenderer(); 
+        centerRendererProd.setHorizontalAlignment(JLabel.CENTER);
+        DefaultTableCellRenderer rightRendererProd = new DefaultTableCellRenderer(); 
+        rightRendererProd.setHorizontalAlignment(JLabel.RIGHT);
+
         productTable.getColumnModel().getColumn(0).setCellRenderer(centerRendererProd); // ID
         productTable.getColumnModel().getColumn(1).setCellRenderer(leftRendererProd);  // Name
         productTable.getColumnModel().getColumn(2).setCellRenderer(leftRendererProd);  // Model
         productTable.getColumnModel().getColumn(3).setCellRenderer(leftRendererProd);  // Brand
-        productTable.getColumnModel().getColumn(4).setCellRenderer(centerRendererProd); // Type
-        productTable.getColumnModel().getColumn(5).setCellRenderer(leftRendererProd);  // Category Name
-        productTable.getColumnModel().getColumn(6).setCellRenderer(rightRendererProd); // Price
-        productTable.getColumnModel().getColumn(7).setCellRenderer(centerRendererProd); // Stock
-        productTable.getColumnModel().getColumn(8).setCellRenderer(centerRendererProd); // Published Year
+        productTable.getColumnModel().getColumn(4).setCellRenderer(leftRendererProd);  // Category Name
+        productTable.getColumnModel().getColumn(5).setCellRenderer(rightRendererProd); // Price
+        productTable.getColumnModel().getColumn(6).setCellRenderer(centerRendererProd); // Stock
+        productTable.getColumnModel().getColumn(7).setCellRenderer(centerRendererProd); // Published
 
         productTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         productTable.getSelectionModel().addListSelectionListener(e -> {
@@ -335,7 +338,6 @@ public class AdminDashboardScreen {
         JScrollPane descriptionScrollPane = new JScrollPane(descriptionAreaProd);
         priceFieldProd = new JTextField(15);
         stockFieldProd = new JTextField(10);
-        productTypeComboProd = new JComboBox<>(new String[]{"Laptop", "Gear", "Components", "Accessory", "Other"});
         categoryComboProd = new JComboBox<>();
         publishDatePickerProd = new JXDatePicker();
         publishDatePickerProd.setFormats(jxDatePickerFormatter); // Sử dụng SimpleDateFormat
@@ -349,7 +351,6 @@ public class AdminDashboardScreen {
         addFormField(productFormPanel, gbcForm, "Description:", descriptionScrollPane, y++);
         addFormField(productFormPanel, gbcForm, "Price (VNĐ):", priceFieldProd, y++);
         addFormField(productFormPanel, gbcForm, "Stock Quantity:", stockFieldProd, y++);
-        addFormField(productFormPanel, gbcForm, "Product Type:", productTypeComboProd, y++);
         addFormField(productFormPanel, gbcForm, "Category:", categoryComboProd, y++);
         addFormField(productFormPanel, gbcForm, "Publish Date:", publishDatePickerProd, y++);
 
@@ -480,7 +481,6 @@ public class AdminDashboardScreen {
             descriptionAreaProd.setText(product.getDescription());
             priceFieldProd.setText(product.getPrice() != null ? product.getPrice().toPlainString() : "");
             stockFieldProd.setText(String.valueOf(product.getStockQuantity()));
-            productTypeComboProd.setSelectedItem(product.getProductType());
             setLocalDateTimeToPicker(publishDatePickerProd, product.getYearPublish());
 
             if (product.getCategoryId() != null) {
@@ -508,11 +508,10 @@ public class AdminDashboardScreen {
             String model = modelFieldProd.getText().trim();
             String brand = brandFieldProd.getText().trim();
             String description = descriptionAreaProd.getText();
-            String productType = (String) productTypeComboProd.getSelectedItem();
             Category selectedCategory = (Category) categoryComboProd.getSelectedItem();
 
-            if (specificName.isEmpty() || model.isEmpty() || brand.isEmpty() || productType == null || productType.isEmpty()) {
-                showAlert("Input Error", "Product Name, Model, Brand, and Type are required.", JOptionPane.ERROR_MESSAGE); return;
+            if (specificName.isEmpty() || model.isEmpty() || brand.isEmpty() || selectedCategory == null) {
+                showAlert("Input Error", "Product Name, Model, Brand, and Category are required.", JOptionPane.ERROR_MESSAGE); return;
             }
 
             BigDecimal price = parseBigDecimal(priceFieldProd.getText(), "Price");
@@ -527,7 +526,7 @@ public class AdminDashboardScreen {
             LocalDateTime publishDateTime = getLocalDateTimeFromPicker(publishDatePickerProd);
             Integer categoryId = (selectedCategory != null) ? selectedCategory.getCategoryId() : null;
 
-            Product newProduct = new Product(0, specificName, model, brand, description, price, stock, publishDateTime, productType, categoryId);
+            Product newProduct = new Product(0, specificName, model, brand, description, price, stock, publishDateTime, categoryId);
             if (selectedCategory != null) newProduct.setCategoryName(selectedCategory.getCategoryName()); // Gán tên category cho model
 
             Product addedProduct = productDb.addProduct(newProduct);
@@ -562,11 +561,10 @@ public class AdminDashboardScreen {
             String model = modelFieldProd.getText().trim();
             String brand = brandFieldProd.getText().trim();
             String description = descriptionAreaProd.getText();
-            String productType = (String) productTypeComboProd.getSelectedItem();
             Category selectedCategory = (Category) categoryComboProd.getSelectedItem();
 
-            if (specificName.isEmpty() || model.isEmpty() || brand.isEmpty() || productType == null || productType.isEmpty()) {
-                showAlert("Input Error", "Product Name, Model, Brand, and Type are required.", JOptionPane.ERROR_MESSAGE); return;
+            if (specificName.isEmpty() || model.isEmpty() || brand.isEmpty() || selectedCategory == null) {
+                showAlert("Input Error", "Product Name, Model, Brand, and Category are required.", JOptionPane.ERROR_MESSAGE); return;
             }
             BigDecimal price = parseBigDecimal(priceFieldProd.getText(), "Price");
             if (price.compareTo(BigDecimal.ZERO) < 0) {
@@ -587,7 +585,6 @@ public class AdminDashboardScreen {
             productToUpdate.setPrice(price);
             productToUpdate.setStockQuantity(stock);
             productToUpdate.setYearPublish(publishDateTime);
-            productToUpdate.setProductType(productType);
             productToUpdate.setCategoryId(categoryId);
             productToUpdate.setCategoryName((selectedCategory != null) ? selectedCategory.getCategoryName() : null);
 
@@ -649,7 +646,6 @@ public class AdminDashboardScreen {
         descriptionAreaProd.setText("");
         priceFieldProd.setText("");
         stockFieldProd.setText("");
-        if (productTypeComboProd.getItemCount() > 0) productTypeComboProd.setSelectedIndex(0);
         if (categoryComboProd.getItemCount() > 0) categoryComboProd.setSelectedIndex(0);
         publishDatePickerProd.setDate(null);
         productTable.clearSelection(); // Thêm dòng này
@@ -2184,4 +2180,3 @@ public class AdminDashboardScreen {
         paymentTable.getSelectionModel().clearSelection();
     }
 }
-

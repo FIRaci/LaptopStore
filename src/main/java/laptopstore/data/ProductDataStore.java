@@ -39,8 +39,8 @@ public class ProductDataStore {
         // Reset sequence trước khi thêm 
         resetProductSequence();
 
-        String sql = "INSERT INTO PRODUCTS (product_name, model, brand, description, price, stock_quantity, year_publish, product_type, category_id) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO PRODUCTS (product_name, model, brand, description, price, stock_quantity, year_publish, category_id) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -57,12 +57,10 @@ public class ProductDataStore {
                 pstmt.setNull(7, Types.TIMESTAMP);
             }
 
-            pstmt.setString(8, product.getProductType()); // product.getProductType()
-
             if (product.getCategoryId() != null && product.getCategoryId() > 0) {
-                pstmt.setInt(9, product.getCategoryId());
+                pstmt.setInt(8, product.getCategoryId());
             } else {
-                pstmt.setNull(9, Types.INTEGER);
+                pstmt.setNull(8, Types.INTEGER);
             }
 
             int affectedRows = pstmt.executeUpdate();
@@ -88,7 +86,7 @@ public class ProductDataStore {
         // Thêm validate tương tự addProduct
 
         String sql = "UPDATE PRODUCTS SET product_name = ?, model = ?, brand = ?, description = ?, price = ?, " +
-                "stock_quantity = ?, year_publish = ?, product_type = ?, category_id = ? " +
+                "stock_quantity = ?, year_publish = ?, category_id = ? " +
                 "WHERE product_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -104,13 +102,12 @@ public class ProductDataStore {
             } else {
                 pstmt.setNull(7, Types.TIMESTAMP);
             }
-            pstmt.setString(8, product.getProductType());
             if (product.getCategoryId() != null && product.getCategoryId() > 0) {
-                pstmt.setInt(9, product.getCategoryId());
+                pstmt.setInt(8, product.getCategoryId());
             } else {
-                pstmt.setNull(9, Types.INTEGER);
+                pstmt.setNull(8, Types.INTEGER);
             }
-            pstmt.setInt(10, product.getProductId());
+            pstmt.setInt(9, product.getProductId());
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -137,7 +134,7 @@ public class ProductDataStore {
 
     public Product getProductById(int productId) throws SQLException {
         if (productId <= 0) return null;
-        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.product_type, p.category_id, c.category_name " +
+        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.category_id, c.category_name " +
                 "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
                 "WHERE p.product_id = ?";
         Product product = null;
@@ -158,7 +155,7 @@ public class ProductDataStore {
 
     public List<Product> getAllProducts() throws SQLException {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.product_type, p.category_id, c.category_name " +
+        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.category_id, c.category_name " +
                 "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
                 "ORDER BY p.product_name, p.product_id";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -177,7 +174,7 @@ public class ProductDataStore {
     public List<Product> getProductsByType(String productType) throws SQLException {
         if (productType == null || productType.trim().isEmpty()) return getAllProducts();
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.product_type, p.category_id, c.category_name " +
+        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.category_id, c.category_name " +
                 "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
                 "WHERE p.product_type = ? ORDER BY p.product_name, p.product_id";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -198,7 +195,7 @@ public class ProductDataStore {
     public List<Product> getProductsByCategoryId(int categoryId) throws SQLException {
         if (categoryId <= 0) return new ArrayList<>();
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.product_type, p.category_id, c.category_name " +
+        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.category_id, c.category_name " +
                 "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " + // Dù lọc theo category_id, vẫn join để lấy tên cho nhất quán
                 "WHERE p.category_id = ? ORDER BY p.product_name, p.product_id";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -219,7 +216,7 @@ public class ProductDataStore {
     public List<Product> getLatestProducts(int limit) throws SQLException {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, " +
-                "p.price, p.stock_quantity, p.year_publish, p.product_type, p.category_id, " +
+                "p.price, p.stock_quantity, p.year_publish, p.category_id, " +
                 "c.category_name " +
                 "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
                 "ORDER BY p.year_publish DESC NULLS LAST, p.product_id DESC LIMIT ?";
@@ -343,11 +340,10 @@ public class ProductDataStore {
         int stockQuantity = rs.getInt("stock_quantity");
         Timestamp yearPublishTs = rs.getTimestamp("year_publish");
         LocalDateTime yearPublish = (yearPublishTs != null) ? yearPublishTs.toLocalDateTime() : null;
-        String productType = rs.getString("product_type");
         Integer categoryId = rs.getObject("category_id", Integer.class);
         String categoryName = rs.getString("category_name"); // Lấy từ JOIN
 
-        Product p = new Product(id, specificProductName, model, brand, description, priceBd, stockQuantity, yearPublish, productType, categoryId);
+        Product p = new Product(id, specificProductName, model, brand, description, priceBd, stockQuantity, yearPublish, categoryId);
         p.setCategoryName(categoryName); // Gán tên category
 
         return p;

@@ -13,14 +13,14 @@ public class Product {
     private LocalDateTime yearPublish;
 
     private String specificProductName; // Tên cụ thể của sản phẩm
-    private String productType;       // Loại: 'Laptop', 'Gear', 'Component'
     private Integer categoryId;       // FK
     private String categoryName;      // Tên category (lấy từ JOIN)
+    private String productType; // Loại sản phẩm (ví dụ: Laptop, Phụ kiện, ...)
 
     // Constructor chính, bao gồm các trường mới
     public Product(int productId, String specificProductName, String model, String brand, String description,
                    BigDecimal price, int stockQuantity, LocalDateTime yearPublish,
-                   String productType, Integer categoryId) {
+                   Integer categoryId) {
         this.productId = productId;
         this.specificProductName = specificProductName;
         this.model = model;
@@ -29,8 +29,8 @@ public class Product {
         this.price = price;
         this.stockQuantity = stockQuantity;
         this.yearPublish = yearPublish;
-        this.productType = productType;
         this.categoryId = categoryId;
+        this.productType = "Laptop"; // Giá trị mặc định vì đây là cửa hàng laptop
         // categoryName sẽ được set sau khi lấy từ DB (qua JOIN)
     }
 
@@ -38,10 +38,10 @@ public class Product {
 
     // Constructor cũ hơn (nếu vẫn dùng đâu đó, nhưng nên chuyển sang dùng constructor chính)
     public Product(int productId, String model, String brand, String description, BigDecimal price, int stockQuantity, LocalDateTime yearPublish) {
-        this(productId, model, model, brand, description, price, stockQuantity, yearPublish, null, null); // specificProductName = model, type và categoryId null
+        this(productId, model, model, brand, description, price, stockQuantity, yearPublish, null); // specificProductName = model, categoryId null
     }
     public Product(int productId, String model, String brand, String description, double price, int stockQuantity, LocalDateTime yearPublish) {
-        this(productId, model, model, brand, description, BigDecimal.valueOf(price), stockQuantity, yearPublish, null, null);
+        this(productId, model, model, brand, description, BigDecimal.valueOf(price), stockQuantity, yearPublish, null);
     }
 
 
@@ -61,9 +61,9 @@ public class Product {
     public int getStockQuantity() { return stockQuantity; }
     public LocalDateTime getYearPublish() { return yearPublish; }
     public String getSpecificProductName() { return specificProductName; }
-    public String getProductType() { return productType; }
     public Integer getCategoryId() { return categoryId; }
     public String getCategoryName() { return categoryName; }
+    public String getProductType() { return productType; }
 
     // Setters
     public void setProductId(int productId) { this.productId = productId; }
@@ -74,7 +74,7 @@ public class Product {
     public void setStockQuantity(int stockQuantity) { this.stockQuantity = stockQuantity; }
     public void setYearPublish(LocalDateTime yearPublish) { this.yearPublish = yearPublish; }
     public void setSpecificProductName(String specificProductName) { this.specificProductName = specificProductName; }
-    public void setProductType(String productType) { this.productType = productType; }
     public void setCategoryId(Integer categoryId) { this.categoryId = categoryId; }
     public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
+    public void setProductType(String productType) { this.productType = productType; }
 }

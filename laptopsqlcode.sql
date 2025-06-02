@@ -12,7 +12,8 @@ DROP TABLE IF EXISTS categories CASCADE; -- 'categories' viết thường như D
 -- Bảng CATEGORIES
 CREATE TABLE categories ( -- Viết thường 'categories' để khớp với DDL gốc của bạn nếu CSDL phân biệt chữ hoa/thường
     category_id SERIAL PRIMARY KEY,
-    category_name VARCHAR(100) NOT NULL UNIQUE
+    category_name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT
 );
 
 -- Bảng CUSTOMERS
@@ -55,7 +56,6 @@ CREATE TABLE PRODUCTS (
     price NUMERIC(19, 2) NOT NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
     year_publish TIMESTAMP,
-    product_type VARCHAR(50),           -- Đã thêm cột product_type
     category_id INTEGER,                -- Đã thêm cột category_id
     CONSTRAINT fk_product_category FOREIGN KEY (category_id)
         REFERENCES categories (category_id) -- Tham chiếu đến 'categories' viết thường
