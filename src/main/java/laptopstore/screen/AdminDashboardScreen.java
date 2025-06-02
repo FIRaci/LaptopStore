@@ -122,7 +122,7 @@ public class AdminDashboardScreen {
     private JComboBox<Employee> paymentEmployeeCombo;
     private JTextField paymentAmountField;
     private JXDatePicker paymentDatePicker;
-    private JComboBox<String> paymentMethodCombo, paymentStatusCombo;
+    private JComboBox<String> paymentMethodCombo;
     private JTextArea paymentNotesArea;
 
     // --- Tab Orders ---
@@ -1281,11 +1281,13 @@ public class AdminDashboardScreen {
         // Căn lề cho Payment Table
         DefaultTableCellRenderer centerRendererPay = new DefaultTableCellRenderer(); centerRendererPay.setHorizontalAlignment(JLabel.CENTER);
         DefaultTableCellRenderer rightRendererPay = new DefaultTableCellRenderer(); rightRendererPay.setHorizontalAlignment(JLabel.RIGHT);
+        DefaultTableCellRenderer leftRendererPay = new DefaultTableCellRenderer(); leftRendererPay.setHorizontalAlignment(JLabel.LEFT);
+        
         paymentTable.getColumnModel().getColumn(0).setCellRenderer(centerRendererPay); // ID
         paymentTable.getColumnModel().getColumn(2).setCellRenderer(centerRendererPay); // Date
         paymentTable.getColumnModel().getColumn(3).setCellRenderer(rightRendererPay); // Amount
         paymentTable.getColumnModel().getColumn(4).setCellRenderer(centerRendererPay); // Method
-        paymentTable.getColumnModel().getColumn(5).setCellRenderer(centerRendererPay); // Status
+        paymentTable.getColumnModel().getColumn(5).setCellRenderer(leftRendererPay);  // Notes
 
 
         paymentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -1310,7 +1312,6 @@ public class AdminDashboardScreen {
         paymentDatePicker.setFormats(jxDatePickerFormatter);
         paymentDatePicker.setPreferredSize(new Dimension(140, paymentDatePicker.getPreferredSize().height));
         paymentMethodCombo = new JComboBox<>(new String[]{"Cash", "Credit Card", "Bank Transfer", "Momo", "Other"});
-        paymentStatusCombo = new JComboBox<>(new String[]{"Pending", "Paid", "Failed", "Refunded", "Cancelled"});
         paymentNotesArea = new JTextArea(2, 20);
         paymentNotesArea.setLineWrap(true);
         paymentNotesArea.setWrapStyleWord(true);
@@ -1323,7 +1324,6 @@ public class AdminDashboardScreen {
         addFormField(paymentFormPanel, gbcForm, "Total Amount (VNĐ):", paymentAmountField, y++);
         addFormField(paymentFormPanel, gbcForm, "Payment Date:", paymentDatePicker, y++);
         addFormField(paymentFormPanel, gbcForm, "Method:", paymentMethodCombo, y++);
-        addFormField(paymentFormPanel, gbcForm, "Status:", paymentStatusCombo, y++);
         addFormField(paymentFormPanel, gbcForm, "Notes:", notesScrollPane, y++);
 
 
@@ -1440,7 +1440,6 @@ public class AdminDashboardScreen {
             paymentAmountField.setText(payment.getTotalAmount() != null ? payment.getTotalAmount().toPlainString() : "");
             setLocalDateTimeToPicker(paymentDatePicker, payment.getPaymentDate());
             paymentMethodCombo.setSelectedItem(payment.getPaymentMethod());
-            paymentStatusCombo.setSelectedItem(payment.getStatus());
             paymentNotesArea.setText(payment.getNotes());
 
             if (payment.getEmployeeId() > 0) {
@@ -1467,12 +1466,11 @@ public class AdminDashboardScreen {
             Employee selectedEmployee = (Employee) paymentEmployeeCombo.getSelectedItem();
             String amountText = paymentAmountField.getText();
             String method = (String) paymentMethodCombo.getSelectedItem();
-            String status = (String) paymentStatusCombo.getSelectedItem();
             LocalDateTime paymentDateTime = getLocalDateTimeFromPicker(paymentDatePicker);
             String notes = paymentNotesArea.getText();
 
-            if (method == null || method.isEmpty() || status == null || status.isEmpty() || paymentDateTime == null) {
-                showAlert("Input Error", "Payment Date, Method, and Status are required.", JOptionPane.ERROR_MESSAGE); return;
+            if (method == null || method.isEmpty() || paymentDateTime == null) {
+                showAlert("Input Error", "Payment Date and Method are required.", JOptionPane.ERROR_MESSAGE); return;
             }
             BigDecimal amount = parseBigDecimal(amountText, "Total Amount");
             if (amount.compareTo(BigDecimal.ZERO) < 0) {
@@ -1481,7 +1479,7 @@ public class AdminDashboardScreen {
 
             int employeeId = (selectedEmployee != null) ? selectedEmployee.getEmployeeId() : 0; // 0 hoặc giá trị biểu thị NULL
 
-            Payment newPayment = new Payment(0, employeeId, paymentDateTime, amount, method, status, notes);
+            Payment newPayment = new Payment(0, employeeId, paymentDateTime, amount, method, notes);
 
             Payment addedPayment = paymentDb.addPayment(newPayment);
             if (addedPayment != null) {
@@ -1512,12 +1510,11 @@ public class AdminDashboardScreen {
             Employee selectedEmployee = (Employee) paymentEmployeeCombo.getSelectedItem();
             String amountText = paymentAmountField.getText();
             String method = (String) paymentMethodCombo.getSelectedItem();
-            String status = (String) paymentStatusCombo.getSelectedItem();
             LocalDateTime paymentDateTime = getLocalDateTimeFromPicker(paymentDatePicker);
             String notes = paymentNotesArea.getText();
 
-            if (method == null || method.isEmpty() || status == null || status.isEmpty() || paymentDateTime == null) {
-                showAlert("Input Error", "Payment Date, Method, and Status are required.", JOptionPane.ERROR_MESSAGE); return;
+            if (method == null || method.isEmpty() || paymentDateTime == null) {
+                showAlert("Input Error", "Payment Date and Method are required.", JOptionPane.ERROR_MESSAGE); return;
             }
             BigDecimal amount = parseBigDecimal(amountText, "Total Amount");
             if (amount.compareTo(BigDecimal.ZERO) < 0) {
@@ -1529,7 +1526,6 @@ public class AdminDashboardScreen {
             paymentToUpdate.setPaymentDate(paymentDateTime);
             paymentToUpdate.setPaymentMethod(method);
             paymentToUpdate.setTotalAmount(amount);
-            paymentToUpdate.setStatus(status);
             paymentToUpdate.setNotes(notes);
             paymentToUpdate.setEmployeeName((selectedEmployee != null) ? selectedEmployee.getFirstName() + " " + selectedEmployee.getLastName() : null);
 
@@ -1581,7 +1577,7 @@ public class AdminDashboardScreen {
                 } else {
                     showAlert("Database Error", "Error deleting payment: " + ex.getMessage(), JOptionPane.ERROR_MESSAGE);
                 }
-                ex.printStackTrace(); // Sửa lỗi chính tả từ printStacktrace() thành printStackTrace()
+                ex.printStackTrace();
             }
         }
     }
@@ -1814,7 +1810,7 @@ public class AdminDashboardScreen {
                     super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                     if (value instanceof Payment) {
                         Payment p = (Payment) value;
-                        setText("ID: " + p.getPaymentId() + " (" + p.getStatus() + ") - " + (p.getTotalAmount() != null ? p.getTotalAmount().toPlainString() + " VNĐ" : "N/A"));
+                        setText("ID: " + p.getPaymentId() + (p.getTotalAmount() != null ? p.getTotalAmount().toPlainString() + " VNĐ" : "N/A"));
                     } else {
                         setText("Select Payment (Optional)");
                     }
@@ -2174,7 +2170,6 @@ public class AdminDashboardScreen {
         paymentAmountField.setText("");
         paymentDatePicker.setDate(null);
         if(paymentMethodCombo.getItemCount() > 0) paymentMethodCombo.setSelectedIndex(0);
-        if(paymentStatusCombo.getItemCount() > 0) paymentStatusCombo.setSelectedIndex(0);
         paymentNotesArea.setText("");
         paymentTable.clearSelection();
         paymentTable.getSelectionModel().clearSelection();

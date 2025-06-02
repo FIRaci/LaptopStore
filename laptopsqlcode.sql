@@ -69,7 +69,6 @@ CREATE TABLE PAYMENTS (
     payment_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     payment_method VARCHAR(50) NOT NULL,
     total_amount NUMERIC(19, 2) NOT NULL,
-    status VARCHAR(50) NOT NULL,
     notes TEXT,                         -- Đã thêm cột notes
     CONSTRAINT fk_employee_payment FOREIGN KEY (employee_id)
         REFERENCES EMPLOYEES (employee_id)
@@ -82,7 +81,7 @@ CREATE TABLE ORDERS (
     customer_id INTEGER NOT NULL,
     payment_id INTEGER,
     order_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    status VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL CHECK (status IN ('Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned')),
     net_amount NUMERIC(19, 2) NOT NULL DEFAULT 0.00,
     tax NUMERIC(19, 2) NOT NULL DEFAULT 0.00,
     total_amount NUMERIC(19, 2) NOT NULL DEFAULT 0.00,

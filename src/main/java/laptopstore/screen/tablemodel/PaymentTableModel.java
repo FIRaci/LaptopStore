@@ -1,22 +1,20 @@
 package laptopstore.screen.tablemodel;
 
-import laptopstore.model.Payment;
-// Để hiển thị tên Employee:
-// import laptopstore.model.Employee;
-// import laptopstore.data.EmployeeDataStore;
-
-import javax.swing.table.AbstractTableModel;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.table.AbstractTableModel;
+
+import laptopstore.model.Payment;
 // import java.util.HashMap;
 // import java.util.Map;
 
 public class PaymentTableModel extends AbstractTableModel {
     private List<Payment> payments;
-    private final String[] columnNames = {"Payment ID", "Employee ID", "Payment Date", "Total Amount", "Method", "Status"};
+    private final String[] columnNames = {"Payment ID", "Employee ID", "Payment Date", "Total Amount", "Method", "Notes"};
     private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     // Ví dụ nếu muốn lấy tên Employee
@@ -66,7 +64,7 @@ public class PaymentTableModel extends AbstractTableModel {
                 BigDecimal totalAmount = payment.getTotalAmount();
                 return totalAmount != null ? totalAmount.setScale(2, RoundingMode.HALF_UP) : null;
             case 4: return payment.getPaymentMethod();
-            case 5: return payment.getStatus();
+            case 5: return payment.getNotes();
             default: return null;
         }
     }

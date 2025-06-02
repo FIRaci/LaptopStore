@@ -9,25 +9,23 @@ public class Payment {
     private LocalDateTime paymentDate;
     private BigDecimal totalAmount; // Đã là BigDecimal
     private String paymentMethod;
-    private String status;
     private String notes;
 
     private String employeeName; // Để hiển thị (lấy từ JOIN)
 
-    public Payment(int paymentId, int employeeId, LocalDateTime paymentDate, BigDecimal totalAmount, String paymentMethod, String status, String notes) {
+    public Payment(int paymentId, int employeeId, LocalDateTime paymentDate, BigDecimal totalAmount, String paymentMethod, String notes) {
         this.paymentId = paymentId;
         this.employeeId = employeeId; // employeeId có thể là 0 nếu không có nhân viên liên quan (CSDL cho phép NULL)
         this.paymentDate = paymentDate;
         this.totalAmount = totalAmount;
         this.paymentMethod = paymentMethod;
-        this.status = status;
         this.notes = notes;
     }
 
     public Payment() {}
 
-    public Payment(int paymentId, int employeeId, LocalDateTime paymentDate, double totalAmount, String paymentMethod, String status, String notes) {
-        this(paymentId, employeeId, paymentDate, BigDecimal.valueOf(totalAmount), paymentMethod, status, notes);
+    public Payment(int paymentId, int employeeId, LocalDateTime paymentDate, double totalAmount, String paymentMethod, String notes) {
+        this(paymentId, employeeId, paymentDate, BigDecimal.valueOf(totalAmount), paymentMethod, notes);
     }
 
     @Override
@@ -35,8 +33,7 @@ public class Payment {
         return "Payment ID: " + paymentId +
                 (employeeName != null ? " - Emp: " + employeeName : (employeeId != 0 ? " - Emp.ID: " + employeeId : "")) +
                 " - Amount: $" + (totalAmount != null ? totalAmount.toPlainString() : "N/A") +
-                " - Method: " + (paymentMethod != null ? paymentMethod : "N/A") +
-                " - Status: " + (status != null ? status : "N/A");
+                " - Method: " + (paymentMethod != null ? paymentMethod : "N/A");
     }
 
     // Getters
@@ -45,7 +42,6 @@ public class Payment {
     public LocalDateTime getPaymentDate() { return paymentDate; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public String getPaymentMethod() { return paymentMethod; }
-    public String getStatus() { return status; }
     public String getNotes() { return notes; }
     public String getEmployeeName() { return employeeName; }
 
@@ -55,7 +51,6 @@ public class Payment {
     public void setPaymentDate(LocalDateTime paymentDate) { this.paymentDate = paymentDate; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
-    public void setStatus(String status) { this.status = status; }
     public void setNotes(String notes) { this.notes = notes; }
     public void setEmployeeName(String employeeName) { this.employeeName = employeeName; }
 }

@@ -4,7 +4,6 @@ import decimal
 
 # Constants
 PAYMENT_METHODS = ["Cash", "Credit Cash", "Bank Transfer", "Other"]
-PAYMENT_STATUS = ["Pending", "Paid", "Failed", "Refunded", "Cancelled"]
 
 def generate_random_date():
     start_date = datetime(2024, 1, 1)
@@ -35,15 +34,14 @@ def generate_payments(num_records):
             generate_random_date().strftime("%Y-%m-%d %H:%M:%S"),  # payment_date
             random.choice(PAYMENT_METHODS),  # payment_method
             generate_random_amount(),  # total_amount
-            random.choice(PAYMENT_STATUS),  # status
             generate_note(i)  # notes
         )
         
-        current_batch.append(f"({payment[0]}, {payment[1]}, '{payment[2]}', '{payment[3]}', {payment[4]}, '{payment[5]}', '{payment[6]}')")
+        current_batch.append(f"({payment[0]}, {payment[1]}, '{payment[2]}', '{payment[3]}', {payment[4]}, '{payment[5]}')")
         
         if len(current_batch) == batch_size or i == num_records:
             sql_statements.append(
-                "INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, status, notes) VALUES\n" +
+                "INSERT INTO PAYMENTS (payment_id, employee_id, payment_date, payment_method, total_amount, notes) VALUES\n" +
                 ",\n".join(current_batch) + ";"
             )
             current_batch = []

@@ -29,14 +29,13 @@ public class PaymentDataStore {
         if (payment == null) throw new IllegalArgumentException("Payment object cannot be null.");
         if (payment.getPaymentMethod() == null || payment.getPaymentMethod().trim().isEmpty()) throw new IllegalArgumentException("Payment method is required.");
         if (payment.getTotalAmount() == null || payment.getTotalAmount().compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("Total amount must be non-negative.");
-        if (payment.getStatus() == null || payment.getStatus().trim().isEmpty()) throw new IllegalArgumentException("Status is required.");
 
 
         // Reset sequence trước khi thêm
         resetPaymentSequence();
 
-        String sql = "INSERT INTO PAYMENTS (employee_id, payment_date, payment_method, total_amount, status, notes) " +
-                "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO PAYMENTS (employee_id, payment_date, payment_method, total_amount, notes) " +
+                "VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -53,8 +52,7 @@ public class PaymentDataStore {
 
             pstmt.setString(3, payment.getPaymentMethod().trim());
             pstmt.setBigDecimal(4, payment.getTotalAmount()); // payment.getTotalAmount() đã là BigDecimal
-            pstmt.setString(5, payment.getStatus().trim());
-            pstmt.setString(6, payment.getNotes());
+            pstmt.setString(5, payment.getNotes());
 
 
             int affectedRows = pstmt.executeUpdate();
@@ -78,7 +76,7 @@ public class PaymentDataStore {
         if (payment.getPaymentId() <= 0) throw new IllegalArgumentException("Payment ID không hợp lệ để cập nhật.");
         // Thêm validate tương tự addPayment
 
-        String sql = "UPDATE PAYMENTS SET employee_id=?, payment_date=?, payment_method=?, total_amount=?, status=?, notes=? " +
+        String sql = "UPDATE PAYMENTS SET employee_id=?, payment_date=?, payment_method=?, total_amount=?, notes=? " +
                 "WHERE payment_id=?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -94,9 +92,8 @@ public class PaymentDataStore {
             }
             pstmt.setString(3, payment.getPaymentMethod().trim());
             pstmt.setBigDecimal(4, payment.getTotalAmount()); // payment.getTotalAmount() là BigDecimal
-            pstmt.setString(5, payment.getStatus().trim());
-            pstmt.setString(6, payment.getNotes());
-            pstmt.setInt(7, payment.getPaymentId());
+            pstmt.setString(5, payment.getNotes());
+            pstmt.setInt(6, payment.getPaymentId());
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -124,7 +121,7 @@ public class PaymentDataStore {
 
     public Payment getPaymentById(int paymentId) throws SQLException {
         if (paymentId <= 0) return null;
-        String sql = "SELECT p.payment_id, p.employee_id, p.payment_date, p.payment_method, p.total_amount, p.status, p.notes, " +
+        String sql = "SELECT p.payment_id, p.employee_id, p.payment_date, p.payment_method, p.total_amount, p.notes, " +
                 "e.first_name as emp_first_name, e.last_name as emp_last_name " +
                 "FROM PAYMENTS p LEFT JOIN EMPLOYEES e ON p.employee_id = e.employee_id " +
                 "WHERE p.payment_id = ?";
@@ -149,7 +146,7 @@ public class PaymentDataStore {
 
     public List<Payment> getAllPayments() throws SQLException {
         List<Payment> payments = new ArrayList<>();
-        String sql = "SELECT p.payment_id, p.employee_id, p.payment_date, p.payment_method, p.total_amount, p.status, p.notes, " +
+        String sql = "SELECT p.payment_id, p.employee_id, p.payment_date, p.payment_method, p.total_amount, p.notes, " +
                 "e.first_name as emp_first_name, e.last_name as emp_last_name " +
                 "FROM PAYMENTS p LEFT JOIN EMPLOYEES e ON p.employee_id = e.employee_id " +
                 "ORDER BY p.payment_date DESC, p.payment_id DESC";
@@ -201,11 +198,10 @@ public class PaymentDataStore {
         LocalDateTime paymentDate = (paymentDateTs != null) ? paymentDateTs.toLocalDateTime() : null;
         String paymentMethod = rs.getString("payment_method");
         BigDecimal totalAmountBd = rs.getBigDecimal("total_amount"); // Lấy trực tiếp BigDecimal
-        String status = rs.getString("status");
         String notes = rs.getString("notes");
 
         // Sử dụng constructor của Payment đã được cập nhật
-        Payment payment = new Payment(id, employeeId, paymentDate, totalAmountBd, paymentMethod, status, notes);
+        Payment payment = new Payment(id, employeeId, paymentDate, totalAmountBd, paymentMethod, notes);
         // employeeName sẽ được set ở hàm gọi sau khi JOIN
         return payment;
     }

@@ -22,41 +22,63 @@ def generate_random_amount():
 def generate_orders(num_records):
     inactive_customers = get_inactive_customers()
     active_customers = [c for c in range(1, 1014) if c not in inactive_customers]
-    payment_range = list(range(1, 7165)) + [None] * 100  # Adding None values for null payments
-
+    
+    # Make list of all payment IDs
+    payment_ids = list(range(1, 7165))  # All payment IDs from 1 to 7164
+    random.shuffle(payment_ids)  # Shuffle to distribute randomly
+    
     sql_statements = []
     batch_size = 100
     current_batch = []
-
-    for i in range(1, num_records + 1):
+    used_order_ids = set()  # Track used order IDs
+    order_id = 1  # Start with order_id 1
+    
+    # Generate orders ensuring unique order_ids
+    for i in range(num_records):
+        while order_id in used_order_ids:
+            order_id += 1
+        
+        used_order_ids.add(order_id)
+        
         net_amount = generate_random_amount()
-        tax = round(net_amount * decimal.Decimal('0.1'), 2)  # 10% tax
+        tax = round(net_amount * decimal.Decimal('0.1'), 2)
         total = net_amount + tax
-
+        
+        # First 7164 orders get unique payment_ids, rest get 80% existing payment or NULL
+        payment_id = payment_ids[i] if i < len(payment_ids) else (
+            'NULL' if random.random() < 0.2 else str(random.choice(payment_ids))
+        )
+        
         order = (
-            i,  # order_id
+            order_id,  # Guaranteed unique order_id
             random.choice(active_customers),  # customer_id
-            random.choice(payment_range),  # payment_id (can be NULL)
-            generate_random_date(),  # order_date
-            random.choice(ORDER_STATUS),  # status
-            net_amount,  # net_amount
-            tax,  # tax
-            total,  # total_amount
-            f"Shipping Address {i}",  # shipping_address
-            f"Order {i} notes"  # notes
+            payment_id,  # payment_id based on logic above
+            generate_random_date(),
+            random.choice(ORDER_STATUS),
+            net_amount,
+            tax,
+            total,
+            f"Shipping Address {order_id}",
+            f"Order {order_id} notes"
         )
         
-        payment_value = 'NULL' if order[2] is None else str(order[2])
         current_batch.append(
-            f"({order[0]}, {order[1]}, {payment_value}, '{order[3]}', '{order[4]}', {order[5]}, {order[6]}, {order[7]}, '{order[8]}', '{order[9]}')"
+            f"({order[0]}, {order[1]}, {order[2]}, '{order[3]}', '{order[4]}', {order[5]}, {order[6]}, {order[7]}, '{order[8]}', '{order[9]}')"
         )
         
-        if len(current_batch) == batch_size or i == num_records:
+        if len(current_batch) == batch_size:
             sql_statements.append(
                 "INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES\n" +
                 ",\n".join(current_batch) + ";"
             )
             current_batch = []
+
+    # Handle any remaining orders in the last batch
+    if current_batch:
+        sql_statements.append(
+            "INSERT INTO ORDERS (order_id, customer_id, payment_id, order_date, status, net_amount, tax, total_amount, shipping_address, notes) VALUES\n" +
+            ",\n".join(current_batch) + ";"
+        )
 
     with open('orders.sql', 'w', encoding='utf-8') as f:
         f.write("-- Generated Orders Data\n")
