@@ -13,7 +13,7 @@ Hard:
 - Tên danh mục (category_name)
 - Tỷ lệ tăng trưởng của từng tháng so với tháng trước (danh sách 5 giá trị lần lượt bao gồm (doanh thu tháng 8 - doanh thu tháng 7), (doanh thu tháng 9 - doanh thu tháng 8), ..., (doanh thu tháng 12 - doanh thu tháng 11))
 - Top 3 sản phẩm có doanh thu cao nhất trong mỗi danh mục (top_products)
-- Top 5 nhân viên có doanh số cao nhất trong danh mục (best_employee)
+- Top 3 nhân viên có doanh số cao nhất trong danh mục (best_employee)
 - Tổng doanh thu của danh mục trong khoảng thời gian đó (total_revenue)
 
 CUSTOMERS QUERIES:

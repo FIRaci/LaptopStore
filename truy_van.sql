@@ -83,7 +83,7 @@ TopEmployees AS (
         WHERE o.order_date BETWEEN '2024-07-01' AND '2024-12-31'
         GROUP BY c.category_name, e.first_name, e.last_name
     ) ranked
-    WHERE rn <= 5
+    WHERE rn <= 3
     GROUP BY category_name
 )
 SELECT 
