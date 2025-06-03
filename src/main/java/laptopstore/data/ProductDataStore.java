@@ -257,7 +257,7 @@ public class ProductDataStore {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT p.*, c.category_name, " +
                     "SUM(od.quantity) as total_sold, " +
-                    "SUM(od.quantity * od.unit_price) as total_revenue " +
+                    "SUM(od.quantity * p.price) as total_revenue " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.category_id " +
                     "JOIN order_details od ON p.product_id = od.product_id " +
@@ -295,7 +295,7 @@ public class ProductDataStore {
         String sql = "SELECT p.*, c.category_name, " +
                     "p.stock_quantity as current_stock, " +
                     "COALESCE(SUM(od.quantity), 0) as total_sold, " +
-                    "COALESCE(SUM(od.quantity * od.unit_price), 0) as total_revenue " +
+                    "COALESCE(SUM(od.quantity * p.price), 0) as total_revenue " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.category_id " +
                     "LEFT JOIN order_details od ON p.product_id = od.product_id " +

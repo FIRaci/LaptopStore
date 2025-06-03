@@ -280,7 +280,7 @@ public class CustomerDataStore {
                     "JOIN orders o ON c.customer_id = o.customer_id " +
                     "JOIN order_details od ON o.order_id = od.order_id " +
                     "JOIN products p ON od.product_id = p.product_id " +
-                    "WHERE p.product_type = 'Laptop' AND p.category_id = 1 " +
+                    "WHERE p.category_id = 1 " +
                     "GROUP BY c.customer_id " +
                     "ORDER BY gaming_orders DESC";
         try (Connection conn = DatabaseConnection.getConnection();
