@@ -1,6 +1,6 @@
 -- PRODUCTS QUERIES
 
--- Medium 1: Top 20 sản phẩm bán chạy
+-- Medium 1: Hiển thị danh sách 20 sản phẩm được bán nhiều nhất từ ngày 01/03/2024 đến ngày 01/07/2024
 WITH ProductSales AS (
     SELECT 
         p.product_name,
@@ -114,7 +114,7 @@ AND o.order_date BETWEEN '2024-02-01' AND '2024-08-31'
 GROUP BY c.customer_id, c.first_name, c.last_name, c.date_of_birth
 HAVING COUNT(DISTINCT o.order_id) >= 5;
 
--- Hard 2: Dự đoán mua hàng
+-- Hard 2: 15 khách hàng chi nhiều tiền nhất theo 15 category khác nhau 
 WITH CustomerCategorySpending AS (
     SELECT 
         c.customer_id,
@@ -170,7 +170,7 @@ AND (c.first_name ILIKE '%z%' OR c.last_name ILIKE '%z%');
 -- EMPLOYEES QUERIES
 
 -- Medium 1: Nhân viên chưa bán Apple iMac
-SELECT DISTINCT e.*
+SELECT DISTINCT e.employee_id, e.first_name, e.last_name, e.role, e.email
 FROM EMPLOYEES e
 WHERE e.employee_id NOT IN (
     SELECT DISTINCT p.employee_id

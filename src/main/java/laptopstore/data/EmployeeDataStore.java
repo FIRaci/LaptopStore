@@ -1,7 +1,6 @@
 package laptopstore.data;
 
 import java.math.BigDecimal;
-// import java.math.RoundingMode; // Not directly used
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -9,7 +8,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.LocalDate;
-// import java.time.temporal.ChronoUnit; // Not directly used
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -223,19 +221,18 @@ public class EmployeeDataStore {
 
     public List<Employee> getEmployeesNotSellingProductInMonth(String productName, int month, int year) throws SQLException {
         List<Employee> employees = new ArrayList<>();
-        String sql = "SELECT e.* " +
+        String sql = "SELECT DISTINCT e.employee_id, e.first_name, e.last_name, e.role, e.email " +
                 "FROM EMPLOYEES e " +
-                "WHERE NOT EXISTS ( " +
-                "    SELECT 1 " +
-                "    FROM ORDERS o " +
+                "WHERE e.employee_id NOT IN ( " +
+                "    SELECT DISTINCT p.employee_id " + 
+                "    FROM PAYMENTS p " +
+                "    JOIN ORDERS o ON p.payment_id = o.payment_id " +
                 "    JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
-                "    JOIN PRODUCTS p ON od.product_id = p.product_id " +
-                "    JOIN PAYMENTS py ON o.payment_id = py.payment_id " +
-                "    WHERE py.employee_id = e.employee_id " +
-                "      AND p.product_name = ? " +
-                "      AND EXTRACT(MONTH FROM o.order_date) = ? " +
-                "      AND EXTRACT(YEAR FROM o.order_date) = ? " +
-                ") ORDER BY e.last_name, e.first_name";
+                "    JOIN PRODUCTS pr ON od.product_id = pr.product_id " +
+                "    WHERE pr.product_name = ? " +
+                "    AND EXTRACT(MONTH FROM o.order_date) = ? " +
+                "    AND EXTRACT(YEAR FROM o.order_date) = ? " +
+                ")";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, productName);
@@ -243,12 +240,15 @@ public class EmployeeDataStore {
             pstmt.setInt(3, year);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    employees.add(mapRowToEmployee(rs));
+                    Employee emp = new Employee();
+                    emp.setEmployeeId(rs.getInt("employee_id"));
+                    emp.setFirstName(rs.getString("first_name"));
+                    emp.setLastName(rs.getString("last_name")); 
+                    emp.setRole(rs.getString("role"));
+                    emp.setEmail(rs.getString("email"));
+                    employees.add(emp);
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi tìm nhân viên không bán sản phẩm: " + e.getMessage());
-            throw e;
         }
         return employees;
     }
@@ -256,38 +256,22 @@ public class EmployeeDataStore {
     public List<Map<String, Object>> getTopPerformingEmployeesByPaymentPerDay(int limit, LocalDate referenceDate) throws SQLException {
         List<Map<String, Object>> results = new ArrayList<>();
         String sql = "SELECT " +
-                "    e.employee_id, " +
-                "    e.first_name || ' ' || e.last_name AS employee_name, " +
-                "    e.role, " +
-                "    e.hire_day, " +
-                "    COALESCE(SUM(py.total_amount), 0) AS total_payments_amount, " +
-                "    (DATE_PART('day', ?::timestamp - e.hire_day::timestamp) + 1) AS days_worked, " +
-                "    CASE " +
-                "        WHEN (DATE_PART('day', ?::timestamp - e.hire_day::timestamp) + 1) > 0 " +
-                "        THEN COALESCE(SUM(py.total_amount), 0) / (DATE_PART('day', ?::timestamp - e.hire_day::timestamp) + 1) " +
-                "        ELSE 0 " +
-                "    END AS performance_metric " +
+                "    e.first_name || ' ' || e.last_name as employee_name, " +
+                "    COUNT(p.payment_id)::FLOAT / NULLIF((?::DATE - e.hire_day), 0) as efficiency_rate " +
                 "FROM EMPLOYEES e " +
-                "LEFT JOIN PAYMENTS py ON e.employee_id = py.employee_id " +
-                "GROUP BY e.employee_id, e.first_name, e.last_name, e.role, e.hire_day " +
-                "ORDER BY performance_metric DESC " +
+                "LEFT JOIN PAYMENTS p ON e.employee_id = p.employee_id " +
+                "GROUP BY e.employee_id, e.first_name, e.last_name, e.hire_day " + 
+                "ORDER BY efficiency_rate DESC " +
                 "LIMIT ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setDate(1, java.sql.Date.valueOf(referenceDate));
-            pstmt.setDate(2, java.sql.Date.valueOf(referenceDate));
-            pstmt.setDate(3, java.sql.Date.valueOf(referenceDate));
-            pstmt.setInt(4, limit);
+            pstmt.setInt(2, limit);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
-                    row.put("employee_id", rs.getInt("employee_id"));
                     row.put("employee_name", rs.getString("employee_name"));
-                    row.put("role", rs.getString("role"));
-                    row.put("hire_day", rs.getDate("hire_day"));
-                    row.put("total_payments_amount", rs.getBigDecimal("total_payments_amount"));
-                    row.put("days_worked", rs.getDouble("days_worked"));
-                    row.put("performance_metric", rs.getBigDecimal("performance_metric"));
+                    row.put("efficiency_rate", rs.getDouble("efficiency_rate"));
                     results.add(row);
                 }
             }

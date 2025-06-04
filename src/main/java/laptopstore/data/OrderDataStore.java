@@ -1,7 +1,6 @@
 package laptopstore.data;
 
 import java.math.BigDecimal;
-// import java.math.RoundingMode; // Not directly used in this file's new methods
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,7 +15,6 @@ import java.util.Map;
 
 import laptopstore.model.Order;
 import laptopstore.model.OrderItem;
-// import laptopstore.model.Product; // Not directly used in this file's new methods
 import laptopstore.util.DatabaseConnection;
 
 public class OrderDataStore {
@@ -520,31 +518,34 @@ public class OrderDataStore {
 
     public List<Map<String, Object>> getHighestValueOrderPerMonth(int year) throws SQLException {
         List<Map<String, Object>> results = new ArrayList<>();
-        String sql = "WITH RankedOrders AS ( " +
-                "    SELECT " +
+        String sql = "WITH MonthlyMaxOrders AS ( " +
+                "    SELECT DISTINCT ON (DATE_TRUNC('month', order_date)) " +
                 "        o.order_id, " +
-                "        TO_CHAR(o.order_date, 'YYYY-MM') AS order_month, " +
-                "        c.first_name || ' ' || c.last_name AS customer_name, " +
+                "        o.order_date, " +
                 "        o.total_amount, " +
-                "        ROW_NUMBER() OVER (PARTITION BY TO_CHAR(o.order_date, 'YYYY-MM') ORDER BY o.total_amount DESC) as rn " +
+                "        c.first_name || ' ' || c.last_name as customer_name, " +
+                "        e.first_name || ' ' || e.last_name as employee_name, " +
+                "        p.payment_method " +
                 "    FROM ORDERS o " +
                 "    JOIN CUSTOMERS c ON o.customer_id = c.customer_id " +
+                "    JOIN PAYMENTS p ON o.payment_id = p.payment_id " +
+                "    JOIN EMPLOYEES e ON p.employee_id = e.employee_id " +
                 "    WHERE EXTRACT(YEAR FROM o.order_date) = ? " +
+                "    ORDER BY DATE_TRUNC('month', order_date), o.total_amount DESC " +
                 ") " +
-                "SELECT order_month, order_id, customer_name, total_amount " +
-                "FROM RankedOrders " +
-                "WHERE rn = 1 " +
-                "ORDER BY order_month";
+                "SELECT * FROM MonthlyMaxOrders ORDER BY order_date";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, year);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
-                    row.put("order_month", rs.getString("order_month"));
                     row.put("order_id", rs.getInt("order_id"));
-                    row.put("customer_name", rs.getString("customer_name"));
+                    row.put("order_date", rs.getDate("order_date"));
                     row.put("total_amount", rs.getBigDecimal("total_amount"));
+                    row.put("customer_name", rs.getString("customer_name"));
+                    row.put("employee_name", rs.getString("employee_name"));
+                    row.put("payment_method", rs.getString("payment_method"));
                     results.add(row);
                 }
             }
@@ -557,38 +558,34 @@ public class OrderDataStore {
 
     public List<Map<String, Object>> getUnpaidOrdersForSpecificMaleCustomers(String namePatternFragment) throws SQLException {
         List<Map<String, Object>> results = new ArrayList<>();
-        String sql = "SELECT " +
-                "    o.order_id, " +
-                "    c.first_name || ' ' || c.last_name AS customer_name, " +
-                "    o.order_date, " +
-                "    o.total_amount, " +
-                "    o.status " +
+        String sql = "SELECT o.* " +
                 "FROM ORDERS o " +
                 "JOIN CUSTOMERS c ON o.customer_id = c.customer_id " +
-                "WHERE c.gender = 'M' " +
-                "  AND (c.first_name ILIKE ? OR c.last_name ILIKE ? OR c.username ILIKE ?) " +
-                "  AND (o.payment_id IS NULL OR o.status IN ('Pending', 'Awaiting Payment')) " +
-                "ORDER BY o.order_date DESC";
+                "WHERE o.payment_id IS NULL " + 
+                "AND c.gender = 'M' " +
+                "AND (c.first_name ILIKE ? OR c.last_name ILIKE ?)";
+
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            String likePattern = "%" + namePatternFragment.toLowerCase() + "%";
+            String likePattern = "%" + namePatternFragment + "%";
             pstmt.setString(1, likePattern);
             pstmt.setString(2, likePattern);
-            pstmt.setString(3, likePattern);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
                     row.put("order_id", rs.getInt("order_id"));
-                    row.put("customer_name", rs.getString("customer_name"));
+                    row.put("customer_id", rs.getInt("customer_id")); 
+                    row.put("payment_id", rs.getObject("payment_id"));
                     row.put("order_date", rs.getDate("order_date"));
-                    row.put("total_amount", rs.getBigDecimal("total_amount"));
                     row.put("status", rs.getString("status"));
+                    row.put("net_amount", rs.getBigDecimal("net_amount")); 
+                    row.put("tax", rs.getBigDecimal("tax"));
+                    row.put("total_amount", rs.getBigDecimal("total_amount"));
+                    row.put("shipping_address", rs.getString("shipping_address"));
+                    row.put("notes", rs.getString("notes"));
                     results.add(row);
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy đơn hàng chưa thanh toán của khách hàng nam cụ thể: " + e.getMessage());
-            throw e;
         }
         return results;
     }

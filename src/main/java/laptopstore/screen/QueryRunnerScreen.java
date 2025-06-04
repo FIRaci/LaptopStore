@@ -8,15 +8,16 @@ import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -26,17 +27,15 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
-import javax.swing.BorderFactory;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 
-import laptopstore.data.CustomerDataStore;
-import laptopstore.data.ProductDataStore;
-import laptopstore.data.OrderDataStore;
-import laptopstore.data.EmployeeDataStore;
-import laptopstore.data.PaymentDataStore;
 import laptopstore.data.CategoryDataStore;
-
+import laptopstore.data.CustomerDataStore;
+import laptopstore.data.EmployeeDataStore;
+import laptopstore.data.OrderDataStore;
+import laptopstore.data.PaymentDataStore;
+import laptopstore.data.ProductDataStore;
 import laptopstore.model.Category;
 import laptopstore.model.Customer;
 import laptopstore.model.Employee;
@@ -109,9 +108,7 @@ public class QueryRunnerScreen {
             "A10. Top 5 Products by Return Rate ('Returned' status)",
             // New Queries from User (Set 2 - NQ1-NQ10 - đã được tích hợp ở lượt trước)
             "NQ1. Top 20 Products Sold (Revenue, 01/03/24-01/07/24)",
-            "NQ2a. Category Revenue (01/07/24-31/12/24)",
-            "NQ2b. Top 3 Products/Category (Revenue, 01/07/24-31/12/24)",
-            "NQ2c. Top 3 Employees/Category (Sales, 01/07/24-31/12/24)",
+            "NQ2. Category Analysis (07-12/2024)", // Replace NQ2a, NQ2b, NQ2c with this
             "NQ3. Customers (18-30yo, >=5 orders, 01/02/24-31/08/24)",
             "NQ4. Top Spender per Top 15 Categories",
             "NQ5. Highest Value Order per Month (2024)",
@@ -271,17 +268,71 @@ public class QueryRunnerScreen {
                 else if (selectedQueryDesc.equals("A10. Top 5 Products by Return Rate ('Returned' status)")) { rawResults = productDb.getTopProductsByReturnRate(5, "Returned"); columnNames = new String[]{"Prod. ID", "Product Name", "Sold Orders", "Returned Orders", "Return Rate (%)"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("product_id"), rowMap.get("product_name"), rowMap.get("sold_in_orders"), rowMap.get("returned_in_orders"), rowMap.get("return_rate_percentage")}); } }
                 // New Queries from User (Set 2 - NQ1-NQ10)
                 else if (selectedQueryDesc.equals("NQ1. Top 20 Products Sold (Revenue, 01/03/24-01/07/24)")) { LocalDate startDate = LocalDate.of(2024, 3, 1); LocalDate endDate = LocalDate.of(2024, 7, 1); rawResults = productDb.getTop20SellingProductsByRevenue(startDate, endDate); columnNames = new String[]{"Product Name", "Quantity Sold", "Revenue", "Category Name"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("product_name"), rowMap.get("quantity_sold"), rowMap.get("revenue"), rowMap.get("category_name")}); } }
-                else if (selectedQueryDesc.equals("NQ2a. Category Revenue (01/07/24-31/12/24)")) { LocalDate startDate = LocalDate.of(2024, 7, 1); LocalDate endDate = LocalDate.of(2024, 12, 31); rawResults = orderDb.getRevenueByCategory(startDate, endDate); columnNames = new String[]{"Category Name", "Total Revenue", "Total Orders"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("category_name"), rowMap.get("total_revenue_category"), rowMap.get("total_orders_category")}); } }
-                else if (selectedQueryDesc.equals("NQ2b. Top 3 Products/Category (Revenue, 01/07/24-31/12/24)")) { LocalDate startDate = LocalDate.of(2024, 7, 1); LocalDate endDate = LocalDate.of(2024, 12, 31); rawResults = orderDb.getTopProductsPerCategoryByRevenue(3, startDate, endDate); columnNames = new String[]{"Category Name", "Rank", "Product Name", "Product Revenue"};  for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("category_name"), rowMap.get("product_rank_in_category"), rowMap.get("product_name"), rowMap.get("product_revenue_in_category")}); } }
-                else if (selectedQueryDesc.equals("NQ2c. Top 3 Employees/Category (Sales, 01/07/24-31/12/24)")) { LocalDate startDate = LocalDate.of(2024, 7, 1); LocalDate endDate = LocalDate.of(2024, 12, 31); rawResults = orderDb.getTopEmployeesPerCategoryBySales(3, startDate, endDate); columnNames = new String[]{"Category Name", "Rank", "Employee Name", "Sales in Category"};  for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("category_name"), rowMap.get("employee_rank_in_category"), rowMap.get("employee_name"), rowMap.get("employee_sales_in_category")}); } }
+                else if (selectedQueryDesc.equals("NQ2. Category Analysis (07-12/2024)")) { 
+    LocalDate startDate = LocalDate.of(2024, 7, 1);
+    LocalDate endDate = LocalDate.of(2024, 12, 31);
+    rawResults = productDb.getCategorySalesAnalysis(startDate, endDate);
+    columnNames = new String[]{"Category", "Monthly Growth", "Top 3 Products", "Best 3 Employees", "Total Revenue"};
+    for(Object mapObj : rawResults) {
+        Map<String, Object> rowMap = (Map<String, Object>) mapObj;
+        // Convert SQL arrays to readable strings
+        String monthlyGrowth = Arrays.toString((BigDecimal[])((java.sql.Array)rowMap.get("monthly_growth")).getArray());
+        String topProducts = Arrays.toString((String[])((java.sql.Array)rowMap.get("top_products")).getArray());
+        String bestEmployees = Arrays.toString((String[])((java.sql.Array)rowMap.get("best_employees")).getArray());
+        
+        dataRows.add(new Object[]{
+            rowMap.get("category_name"),
+            monthlyGrowth,
+            topProducts,
+            bestEmployees,
+            rowMap.get("total_revenue")
+        });
+    }
+}
                 else if (selectedQueryDesc.equals("NQ3. Customers (18-30yo, >=5 orders, 01/02/24-31/08/24)")) { LocalDate startDate = LocalDate.of(2024, 2, 1); LocalDate endDate = LocalDate.of(2024, 8, 31); rawResults = customerDb.findCustomersByAgeAndOrderCriteria(18, 30, 5, startDate, endDate); columnNames = new String[]{"Customer Name", "Age", "Total Orders", "Total Spent", "Last Order Date"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; Object lastOrderDateObj = rowMap.get("last_order_date"); String lastOrderDateStr = "N/A"; if (lastOrderDateObj instanceof java.sql.Date) { lastOrderDateStr = ((java.sql.Date) lastOrderDateObj).toLocalDate().format(dateFormatter); } dataRows.add(new Object[]{rowMap.get("customer_name"), rowMap.get("age"), rowMap.get("total_orders"), rowMap.get("total_spent"), lastOrderDateStr}); } }
                 else if (selectedQueryDesc.equals("NQ4. Top Spender per Top 15 Categories")) { rawResults = customerDb.getTopSpendersInTopCategories(15, 1); columnNames = new String[]{"Category Name", "Top Customer Name", "Amount Spent in Category"};  for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("category_name"), rowMap.get("customer_name"), rowMap.get("amount_spent_in_category")}); } }
-                else if (selectedQueryDesc.equals("NQ5. Highest Value Order per Month (2024)")) { rawResults = orderDb.getHighestValueOrderPerMonth(2024); columnNames = new String[]{"Month (YYYY-MM)", "Order ID", "Customer Name", "Total Amount"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("order_month"), rowMap.get("order_id"), rowMap.get("customer_name"), rowMap.get("total_amount")}); } }
-                else if (selectedQueryDesc.equals("NQ6. Unpaid Orders (Male Customers, name with 'z')")) { rawResults = orderDb.getUnpaidOrdersForSpecificMaleCustomers("z"); columnNames = new String[]{"Order ID", "Customer Name", "Order Date", "Total Amount", "Status"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; Object orderDateObj = rowMap.get("order_date"); String orderDateStr = "N/A"; if (orderDateObj instanceof java.sql.Date) { orderDateStr = ((java.sql.Date) orderDateObj).toLocalDate().format(dateFormatter); } dataRows.add(new Object[]{rowMap.get("order_id"), rowMap.get("customer_name"), orderDateStr, rowMap.get("total_amount"), rowMap.get("status")}); } }
+                else if (selectedQueryDesc.equals("NQ5. Highest Value Order per Month (2024)")) { rawResults = orderDb.getHighestValueOrderPerMonth(2024); columnNames = new String[]{"Month (YYYY-MM)", "Order ID", "Customer Name", "Total Amount", "Employee Name", "Payment Method"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("order_date"), rowMap.get("order_id"), rowMap.get("customer_name"), rowMap.get("total_amount"), rowMap.get("employee_name"), rowMap.get("payment_method")}); } }
+                else if (selectedQueryDesc.equals("NQ6. Unpaid Orders (Male Customers, name with 'z')")) { rawResults = orderDb.getUnpaidOrdersForSpecificMaleCustomers("z"); columnNames = new String[]{"Order ID", "Customer ID", "Payment ID", "Order Date", "Status", "Net Amount", "Tax", "Total Amount", "Shipping Address", "Notes"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("order_id"), rowMap.get("customer_id"), rowMap.get("payment_id"), rowMap.get("order_date"), rowMap.get("status"), rowMap.get("net_amount"), rowMap.get("tax"), rowMap.get("total_amount"), rowMap.get("shipping_address"), rowMap.get("notes")}); } }
                 else if (selectedQueryDesc.equals("NQ7. Employees NOT selling 'Apple iMac 24 M3' (04/2024)")) { rawResults = employeeDb.getEmployeesNotSellingProductInMonth("Apple iMac 24 M3", 4, 2024); columnNames = new String[]{"Emp. ID", "First Name", "Last Name", "Role", "Email"}; for(Object obj : rawResults) { Employee emp = (Employee) obj; dataRows.add(new Object[]{emp.getEmployeeId(), emp.getFirstName(), emp.getLastName(), emp.getRole(), emp.getEmail()});}}
-                else if (selectedQueryDesc.equals("NQ8. Top 10 Employee Performance (Payment/Day, by 31/12/2024)")) { LocalDate referenceDate = LocalDate.of(2024, 12, 31); rawResults = employeeDb.getTopPerformingEmployeesByPaymentPerDay(10, referenceDate); columnNames = new String[]{"Emp. ID", "Employee Name", "Role", "Hire Date", "Total Payments", "Days Worked", "Performance (Payment/Day)"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; Object hireDateObj = rowMap.get("hire_day"); String hireDateStr = "N/A"; if (hireDateObj instanceof java.sql.Date) { hireDateStr = ((java.sql.Date) hireDateObj).toLocalDate().format(dateFormatter); } dataRows.add(new Object[]{rowMap.get("employee_id"), rowMap.get("employee_name"), rowMap.get("role"), hireDateStr, rowMap.get("total_payments_amount"), String.format("%.0f", rowMap.get("days_worked")), ((BigDecimal)rowMap.get("performance_metric")).setScale(2, RoundingMode.HALF_UP) }); } }
-                else if (selectedQueryDesc.equals("NQ9. Top 10 Payments by Most Orders Linked")) { rawResults = paymentDb.getTopPaymentsByOrderCount(10); columnNames = new String[]{"Payment ID", "Method", "Payment Amount", "# Orders Linked"}; for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("payment_id"), rowMap.get("payment_method"), rowMap.get("payment_total_amount"), rowMap.get("number_of_orders_paid")}); } }
-                else if (selectedQueryDesc.equals("NQ10. Payments for Single Order by Highest Paid Employee")) { rawResults = paymentDb.getSingleOrderPaymentsByHighestPaidEmployee(); columnNames = new String[]{"Employee Name", "Salary", "Payment ID", "Payment Amount", "Order ID Linked"};  for(Object mapObj : rawResults) { Map<String, Object> rowMap = (Map<String, Object>) mapObj; dataRows.add(new Object[]{rowMap.get("employee_name"), rowMap.get("employee_salary"), rowMap.get("payment_id"), rowMap.get("payment_amount"), rowMap.get("order_id_linked")}); } }
+                else if (selectedQueryDesc.equals("NQ8. Top 10 Employee Performance (Payment/Day, by 31/12/2024)")) { 
+    LocalDate referenceDate = LocalDate.of(2024, 12, 31); 
+    rawResults = employeeDb.getTopPerformingEmployeesByPaymentPerDay(10, referenceDate);
+    columnNames = new String[]{"Employee Name", "Payments per Day"}; 
+    for(Object mapObj : rawResults) { 
+        Map<String, Object> rowMap = (Map<String, Object>) mapObj;
+        dataRows.add(new Object[]{
+            rowMap.get("employee_name"),
+            String.format("%.2f", rowMap.get("efficiency_rate"))
+        }); 
+    }
+}
+                else if (selectedQueryDesc.equals("NQ9. Top 10 Payments by Most Orders Linked")) { 
+    rawResults = paymentDb.getTopPaymentsByOrderCount(10); 
+    columnNames = new String[]{"Payment ID", "Payment Method", "Order Count"}; 
+    for(Object mapObj : rawResults) { 
+        Map<String, Object> rowMap = (Map<String, Object>) mapObj;
+        dataRows.add(new Object[]{
+            rowMap.get("payment_id"),
+            rowMap.get("payment_method"),
+            rowMap.get("order_count")
+        }); 
+    }
+}
+                else if (selectedQueryDesc.equals("NQ10. Payments for Single Order by Highest Paid Employee")) { 
+    rawResults = paymentDb.getSingleOrderPaymentsByHighestPaidEmployee();
+    columnNames = new String[]{"Payment ID", "Employee ID", "Payment Date", "Method", "Amount", "Notes"}; 
+    for(Object mapObj : rawResults) { 
+        Map<String, Object> rowMap = (Map<String, Object>) mapObj;
+        dataRows.add(new Object[]{
+            rowMap.get("payment_id"),
+            rowMap.get("employee_id"), 
+            rowMap.get("payment_date") != null ? ((Timestamp)rowMap.get("payment_date")).toLocalDateTime().format(dateTimeFormatter) : "N/A",
+            rowMap.get("payment_method"),
+            rowMap.get("total_amount"),
+            rowMap.get("notes")
+        }); 
+    }
+}
 
                 // --- New Simpler Queries (Set 3 - NQ11-NQ20 - Sửa đổi) ---
                 else if (selectedQueryDesc.equals("NQ11. Số lượng sản phẩm theo từng Danh mục")) {
