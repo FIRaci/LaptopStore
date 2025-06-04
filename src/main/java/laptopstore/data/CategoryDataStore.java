@@ -67,21 +67,7 @@ public class CategoryDataStore {
         if (categoryId <= 0) {
             throw new IllegalArgumentException("Category ID không hợp lệ để xóa.");
         }
-        // CSDL đã có ON DELETE SET NULL trên PRODUCTS.category_id,
-        // nhưng vẫn nên kiểm tra để thông báo thân thiện hơn nếu muốn.
-        // Hoặc nếu bạn muốn logic chặt chẽ hơn là không cho xóa nếu có sản phẩm:
-        /*
-        String checkProductSql = "SELECT COUNT(*) FROM PRODUCTS WHERE category_id = ?";
-        try (Connection connCheck = DatabaseConnection.getConnection();
-             PreparedStatement checkStmt = connCheck.prepareStatement(checkProductSql)) {
-            checkStmt.setInt(1, categoryId);
-            try (ResultSet rs = checkStmt.executeQuery()) {
-                if (rs.next() && rs.getInt(1) > 0) {
-                    throw new SQLException("Không thể xóa category ID " + categoryId + " vì nó đang được sử dụng bởi các sản phẩm.", "CATEGORY_IN_USE");
-                }
-            }
-        }
-        */
+
         String sql = "DELETE FROM CATEGORIES WHERE category_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -89,7 +75,6 @@ public class CategoryDataStore {
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            // "23503" là lỗi FK violation chung, có thể không phải do PRODUCTS nếu có bảng khác tham chiếu
             if ("23503".equals(e.getSQLState())) {
                 throw new SQLException("Không thể xóa category này vì có ràng buộc khóa ngoại (ví dụ: sản phẩm đang sử dụng).", e.getSQLState(), e);
             }

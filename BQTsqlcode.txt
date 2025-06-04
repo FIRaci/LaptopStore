@@ -1,0 +1,74 @@
+NQ11: Số lượng sản phẩm theo từng Danh mục.
+SELECT c.category_name, COUNT(p.product_id) AS product_count
+FROM CATEGORIES c
+LEFT JOIN PRODUCTS p ON c.category_id = p.category_id
+GROUP BY c.category_id, c.category_name
+ORDER BY product_count DESC;
+
+NQ12: Số lượng khách hàng mới đăng ký theo 3 năm trở lại đây
+-- Tham số (ví dụ: years_back = 3)
+SELECT TO_CHAR(created_at, 'YYYY-MM') AS registration_month_year, COUNT(customer_id) AS new_customer_count
+FROM CUSTOMERS
+WHERE created_at >= (CURRENT_DATE - CAST((3 || ' years') AS INTERVAL)) -- ? là số năm
+GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+ORDER BY registration_month_year;
+
+NQ13: Các đơn hàng có tổng giá trị trên 4000
+SELECT o.order_id, c.first_name || ' ' || c.last_name AS customer_name, o.order_date, o.status, o.total_amount
+FROM ORDERS o
+JOIN CUSTOMERS c ON o.customer_id = c.customer_id
+WHERE o.total_amount > 4000
+ORDER BY o.total_amount DESC;
+
+NQ14: Nhân viên được thuê trong 2 năm gần đây.
+-- Tham số (ví dụ: years_back = 2)
+SELECT employee_id, first_name, last_name, role, email, hire_day
+FROM EMPLOYEES
+WHERE hire_day >= (CURRENT_DATE - CAST(2 || ' years' AS INTERVAL)) -- ? là số năm
+ORDER BY hire_day DESC;
+
+NQ15: Tổng tiền và số lượng thanh toán theo từng Phương thức.
+SELECT payment_method, COUNT(payment_id) AS payment_count, SUM(total_amount) AS total_amount_sum
+FROM PAYMENTS
+GROUP BY payment_method
+ORDER BY payment_count DESC, total_amount_sum DESC;
+
+NQ16: Sản phẩm được công bố/nhập trong 3 năm gần nhất.
+-- Tham số (ví dụ: years_back = 3)
+SELECT p.product_id, p.product_name, p.model, c.category_name, p.price, p.year_publish
+FROM PRODUCTS p
+LEFT JOIN CATEGORIES c ON p.category_id = c.category_id
+WHERE p.year_publish >= (CURRENT_DATE - CAST(3 || ' years' AS INTERVAL)) -- ? là số năm
+ORDER BY p.year_publish DESC;
+
+NQ17: Số lượng đơn hàng trong 2 năm theo từng Trạng thái.
+-- Tham số (ví dụ: years_back = 3)
+SELECT p.product_id, p.product_name, p.model, c.category_name, p.price, p.year_publish
+FROM PRODUCTS p
+LEFT JOIN CATEGORIES c ON p.category_id = c.category_id
+WHERE p.year_publish >= (CURRENT_DATE - CAST(2 || ' years' AS INTERVAL)) -- ? là số năm
+ORDER BY p.year_publish DESC;
+
+NQ18: Khách hàng có địa chỉ chứa 'Green Valley'.
+-- Tham số (ví dụ: address_pattern = '%Green Valley%')
+SELECT customer_id, username, first_name || ' ' || last_name AS full_name, email, address
+FROM CUSTOMERS
+WHERE address ILIKE Green Valley -- ? là chuỗi tìm kiếm, ví dụ: '%Green Valley%'
+ORDER BY last_name, first_name;
+
+NQ19: Sản phẩm có giá từ 500 đến 1000.
+-- Tham số (ví dụ: min_price = 500, max_price = 1000)
+SELECT p.product_id, p.product_name, c.category_name, p.price
+FROM PRODUCTS p
+LEFT JOIN CATEGORIES c ON p.category_id = c.category_id
+WHERE p.price BETWEEN 500 AND 1000 -- ? là min_price, ? là max_price
+ORDER BY p.price ASC;
+
+NQ20: Tổng doanh thu trong 2 năm qua
+-- Tham số (ví dụ: years_back_for_revenue = 4)
+SELECT EXTRACT(YEAR FROM order_date) AS sales_year, SUM(total_amount) AS yearly_revenue
+FROM ORDERS
+WHERE order_date >= date_trunc('year', CURRENT_DATE - CAST((2 - 1 || ' years') AS INTERVAL)) -- ? là số năm
+  AND order_date < date_trunc('year', CURRENT_DATE + INTERVAL '1 year')
+GROUP BY EXTRACT(YEAR FROM order_date)
+ORDER BY sales_year DESC;

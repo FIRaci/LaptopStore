@@ -1,14 +1,13 @@
-package laptopstore.util; // Giả sử bạn đặt trong package util
+package laptopstore.util;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DatabaseConnection {
-    // THAY ĐỔI CÁC THÔNG SỐ NÀY CHO PHÙ HỢP VỚI CSDL CỦA BẠN
-    private static final String URL = "jdbc:postgresql://localhost:5432/laptopstore"; // Tên CSDL của bạn
-    private static final String USER = "postgres"; // USERNAME POSTGRESQL CỦA BẠN
-    private static final String PASSWORD = "admin"; // PASSWORD CỦA BẠN
+    private static final String URL = "jdbc:postgresql://localhost:5432/LaptopStore";
+    private static final String USER = "postgres";
+    private static final String PASSWORD = "admin";
 
     static {
         try {
@@ -17,8 +16,6 @@ public class DatabaseConnection {
         } catch (ClassNotFoundException e) {
             System.err.println("Lỗi nghiêm trọng: Không tìm thấy PostgreSQL JDBC Driver!");
             System.err.println("Hãy đảm bảo bạn đã thêm file postgresql.jar vào thư viện của project.");
-            // Trong ứng dụng thực tế, bạn có thể muốn throw một RuntimeException ở đây
-            // để dừng ứng dụng nếu driver không được nạp.
             throw new RuntimeException("PostgreSQL JDBC Driver not found. Please add it to your project libraries.", e);
         }
     }

@@ -9,64 +9,49 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+// import java.time.Period; // Không dùng trực tiếp
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import laptopstore.model.Customer;
 import laptopstore.util.DatabaseConnection;
 
 public class CustomerDataStore {
 
-    private void resetCustomerSequence() throws SQLException {
-        String sql = "SELECT setval('customers_customer_id_seq', COALESCE((SELECT MAX(customer_id) FROM customers), 0))";
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
-        }
-    }
-
+    // --- Các phương thức CRUD và truy vấn cũ giữ nguyên ---
     public Customer addCustomer(Customer customer) throws SQLException {
-        // Reset sequence trước khi thêm
-        resetCustomerSequence();
-
         if (customer == null) throw new IllegalArgumentException("Customer object cannot be null.");
         if (customer.getUsername() == null || customer.getUsername().trim().isEmpty()) throw new IllegalArgumentException("Username is required.");
         if (customer.getEmail() == null || customer.getEmail().trim().isEmpty()) throw new IllegalArgumentException("Email is required.");
         if (customer.getFirstName() == null || customer.getFirstName().trim().isEmpty()) throw new IllegalArgumentException("First name is required.");
         if (customer.getLastName() == null || customer.getLastName().trim().isEmpty()) throw new IllegalArgumentException("Last name is required.");
 
-
         String sql = "INSERT INTO CUSTOMERS (username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
             pstmt.setString(1, customer.getUsername().trim());
             pstmt.setString(2, customer.getEmail().trim());
             pstmt.setString(3, customer.getFirstName().trim());
             pstmt.setString(4, customer.getLastName().trim());
-
             LocalDateTime createdAt = customer.getCreatedAt() != null ? customer.getCreatedAt() : LocalDateTime.now();
             pstmt.setTimestamp(5, Timestamp.valueOf(createdAt));
-            customer.setCreatedAt(createdAt); // Cập nhật lại vào model nếu nó được tạo là now()
-
+            customer.setCreatedAt(createdAt);
             char gender = customer.getGender();
             if (gender == 'M' || gender == 'F' || gender == 'O') {
                 pstmt.setString(6, String.valueOf(gender));
             } else {
-                pstmt.setNull(6, Types.CHAR); // Hoặc giá trị mặc định nếu CSDL không cho phép NULL và không có default
+                pstmt.setNull(6, Types.CHAR);
             }
-
             pstmt.setString(7, customer.getAddress());
-
             if (customer.getDateOfBirth() != null) {
                 pstmt.setDate(8, java.sql.Date.valueOf(customer.getDateOfBirth()));
             } else {
                 pstmt.setNull(8, Types.DATE);
             }
             pstmt.setString(9, customer.getPhone());
-
             int affectedRows = pstmt.executeUpdate();
-
             if (affectedRows > 0) {
                 try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
@@ -76,7 +61,7 @@ public class CustomerDataStore {
                 }
             }
         } catch (SQLException e) {
-            if ("23505".equals(e.getSQLState())) { // UNIQUE constraint violation
+            if ("23505".equals(e.getSQLState())) {
                 if (e.getMessage().toLowerCase().contains("username")) {
                     throw new SQLException("Username '" + customer.getUsername().trim() + "' đã tồn tại.", e.getSQLState(), e);
                 } else if (e.getMessage().toLowerCase().contains("email")) {
@@ -92,20 +77,15 @@ public class CustomerDataStore {
     public boolean updateCustomer(Customer customer) throws SQLException {
         if (customer == null) throw new IllegalArgumentException("Customer object cannot be null.");
         if (customer.getCustomerId() <= 0) throw new IllegalArgumentException("Customer ID không hợp lệ để cập nhật.");
-        // Thêm validate tương tự như addCustomer
-
         String sql = "UPDATE CUSTOMERS SET username = ?, email = ?, first_name = ?, last_name = ?, " +
                 "gender = ?, address = ?, date_of_birth = ?, phone = ? " +
-                // Không nên cho phép cập nhật created_at từ UI, trừ khi có lý do đặc biệt
                 "WHERE customer_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setString(1, customer.getUsername().trim());
             pstmt.setString(2, customer.getEmail().trim());
             pstmt.setString(3, customer.getFirstName().trim());
             pstmt.setString(4, customer.getLastName().trim());
-
             char gender = customer.getGender();
             if (gender == 'M' || gender == 'F' || gender == 'O') {
                 pstmt.setString(5, String.valueOf(gender));
@@ -120,7 +100,6 @@ public class CustomerDataStore {
             }
             pstmt.setString(8, customer.getPhone());
             pstmt.setInt(9, customer.getCustomerId());
-
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
@@ -145,7 +124,7 @@ public class CustomerDataStore {
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            if ("23503".equals(e.getSQLState())) { // FK violation
+            if ("23503".equals(e.getSQLState())) {
                 throw new SQLException("Không thể xóa khách hàng ID " + customerId + " vì có đơn hàng hoặc dữ liệu liên quan khác.", e.getSQLState(), e);
             }
             System.err.println("Lỗi SQL khi xóa khách hàng ID " + customerId + ": " + e.getMessage());
@@ -191,9 +170,8 @@ public class CustomerDataStore {
     public List<Customer> getLatestCustomers(int limit) throws SQLException {
         List<Customer> customers = new ArrayList<>();
         String sql = "SELECT customer_id, username, email, first_name, last_name, created_at, " +
-                    "gender, address, date_of_birth, phone " +
-                    "FROM CUSTOMERS ORDER BY created_at DESC, customer_id DESC LIMIT ?";
-        
+                "gender, address, date_of_birth, phone " +
+                "FROM CUSTOMERS ORDER BY created_at DESC, customer_id DESC LIMIT ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, limit);
@@ -212,7 +190,6 @@ public class CustomerDataStore {
     public List<Customer> getMaleCustomers() throws SQLException {
         List<Customer> customers = new ArrayList<>();
         String sql = "SELECT * FROM CUSTOMERS WHERE gender = 'M' ORDER BY last_name, first_name";
-        
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -227,7 +204,6 @@ public class CustomerDataStore {
     public List<Customer> getCustomersNameStartsWith(String prefix) throws SQLException {
         List<Customer> customers = new ArrayList<>();
         String sql = "SELECT * FROM CUSTOMERS WHERE first_name LIKE ? ORDER BY last_name, first_name";
-        
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, prefix + "%");
@@ -242,12 +218,12 @@ public class CustomerDataStore {
 
     public List<Customer> getTopCustomersByOrders() throws SQLException {
         List<Customer> customers = new ArrayList<>();
-        String sql = "SELECT c.*, COUNT(o.order_id) as order_count " +
-                    "FROM customers c " +
-                    "LEFT JOIN orders o ON c.customer_id = o.customer_id " + 
-                    "GROUP BY c.customer_id " +
-                    "ORDER BY order_count DESC " +
-                    "LIMIT 5";
+        String sql = "SELECT c.*, COUNT(o.order_id) as order_count_for_ranking " +
+                "FROM customers c " +
+                "LEFT JOIN orders o ON c.customer_id = o.customer_id " +
+                "GROUP BY c.customer_id " + // PostgreSQL 9.1+ chỉ cần PK là đủ cho GROUP BY các cột khác của c
+                "ORDER BY order_count_for_ranking DESC " +
+                "LIMIT 5";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -261,8 +237,8 @@ public class CustomerDataStore {
     public List<Customer> getCustomersWithNoOrders() throws SQLException {
         List<Customer> customers = new ArrayList<>();
         String sql = "SELECT c.* FROM customers c " +
-                    "LEFT JOIN orders o ON c.customer_id = o.customer_id " +
-                    "WHERE o.order_id IS NULL";
+                "LEFT JOIN orders o ON c.customer_id = o.customer_id " +
+                "WHERE o.order_id IS NULL";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -275,14 +251,14 @@ public class CustomerDataStore {
 
     public List<Customer> getTopGamingLaptopCustomers() throws SQLException {
         List<Customer> customers = new ArrayList<>();
-        String sql = "SELECT c.*, COUNT(DISTINCT o.order_id) as gaming_orders " +
-                    "FROM customers c " +
-                    "JOIN orders o ON c.customer_id = o.customer_id " +
-                    "JOIN order_details od ON o.order_id = od.order_id " +
-                    "JOIN products p ON od.product_id = p.product_id " +
-                    "WHERE p.category_id = 1 " +
-                    "GROUP BY c.customer_id " +
-                    "ORDER BY gaming_orders DESC";
+        String sql = "SELECT c.*, COUNT(DISTINCT o.order_id) as gaming_orders_for_ranking " +
+                "FROM customers c " +
+                "JOIN orders o ON c.customer_id = o.customer_id " +
+                "JOIN order_details od ON o.order_id = od.order_id " +
+                "JOIN products p ON od.product_id = p.product_id " +
+                "WHERE p.category_id = 1 " + // Giả định category_id = 1 là Gaming Laptop
+                "GROUP BY c.customer_id " +
+                "ORDER BY gaming_orders_for_ranking DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -296,8 +272,8 @@ public class CustomerDataStore {
     public List<Customer> getHighSpendingCustomers() throws SQLException {
         List<Customer> customers = new ArrayList<>();
         String sql = "SELECT DISTINCT c.* FROM customers c " +
-                    "JOIN orders o ON c.customer_id = o.customer_id " +
-                    "WHERE o.total_amount > 5000000";
+                "JOIN orders o ON c.customer_id = o.customer_id " +
+                "WHERE o.total_amount > 5000000";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -311,8 +287,8 @@ public class CustomerDataStore {
     public List<Customer> getCustomersWithPendingOrders() throws SQLException {
         List<Customer> customers = new ArrayList<>();
         String sql = "SELECT DISTINCT c.* FROM customers c " +
-                    "JOIN orders o ON c.customer_id = o.customer_id " +
-                    "WHERE o.status IN ('Pending', 'Processing')";
+                "JOIN orders o ON c.customer_id = o.customer_id " +
+                "WHERE o.status IN ('Pending', 'Processing')";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -323,6 +299,234 @@ public class CustomerDataStore {
         return customers;
     }
 
+    public List<Map<String, Object>> getMostLoyalCustomers(int minOrders, int limit) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT " +
+                "    cus.customer_id, " +
+                "    cus.first_name, " +
+                "    cus.last_name, " +
+                "    cus.email, " +
+                "    COUNT(o.order_id) AS total_orders, " +
+                "    SUM(o.total_amount) AS total_spent, " +
+                "    AVG(o.total_amount) AS average_order_value " +
+                "FROM CUSTOMERS cus " +
+                "JOIN ORDERS o ON cus.customer_id = o.customer_id " +
+                "GROUP BY cus.customer_id, cus.first_name, cus.last_name, cus.email " +
+                "HAVING COUNT(o.order_id) >= ? " +
+                "ORDER BY total_spent DESC, total_orders DESC " +
+                "LIMIT ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, minOrders);
+            pstmt.setInt(2, limit);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("customer_id", rs.getInt("customer_id"));
+                    row.put("first_name", rs.getString("first_name"));
+                    row.put("last_name", rs.getString("last_name"));
+                    row.put("email", rs.getString("email"));
+                    row.put("total_orders", rs.getInt("total_orders"));
+                    row.put("total_spent", rs.getBigDecimal("total_spent"));
+                    row.put("average_order_value", rs.getBigDecimal("average_order_value"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng trung thành: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    public List<Map<String, Object>> getInactiveCustomers(int monthsInactive) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT " +
+                "    c.customer_id, " +
+                "    c.first_name, " +
+                "    c.last_name, " +
+                "    c.email, " +
+                "    MAX(o.order_date) AS last_order_date " +
+                "FROM CUSTOMERS c " +
+                "LEFT JOIN ORDERS o ON c.customer_id = o.customer_id " +
+                "GROUP BY c.customer_id, c.first_name, c.last_name, c.email " +
+                "HAVING MAX(o.order_date) IS NULL OR MAX(o.order_date) < (CURRENT_DATE - CAST(? || ' months' AS INTERVAL)) " +
+                "ORDER BY last_order_date ASC NULLS FIRST, c.last_name";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, monthsInactive);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("customer_id", rs.getInt("customer_id"));
+                    row.put("first_name", rs.getString("first_name"));
+                    row.put("last_name", rs.getString("last_name"));
+                    row.put("email", rs.getString("email"));
+                    row.put("last_order_date", rs.getDate("last_order_date"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng không hoạt động: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    public List<Map<String, Object>> findCustomersByAgeAndOrderCriteria(
+            int minAge, int maxAge, int minOrders, LocalDate ordersStartDate, LocalDate ordersEndDate) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "WITH CustomerOrders AS (" +
+                "    SELECT " +
+                "        c.customer_id, " +
+                "        c.first_name, " +
+                "        c.last_name, " +
+                "        c.date_of_birth, " +
+                "        COUNT(o.order_id) AS total_orders_in_period, " +
+                "        SUM(o.total_amount) AS total_spent_in_period, " +
+                "        MAX(o.order_date) AS last_order_date_in_period " +
+                "    FROM CUSTOMERS c " +
+                "    JOIN ORDERS o ON c.customer_id = o.customer_id " +
+                "    WHERE o.order_date BETWEEN ? AND ? " +
+                "    GROUP BY c.customer_id, c.first_name, c.last_name, c.date_of_birth " +
+                "    HAVING COUNT(o.order_id) >= ? " +
+                ") " +
+                "SELECT " +
+                "    co.first_name || ' ' || co.last_name AS customer_name, " +
+                "    EXTRACT(YEAR FROM AGE(CURRENT_DATE, co.date_of_birth)) AS age, " +
+                "    co.total_orders_in_period, " +
+                "    co.total_spent_in_period, " +
+                "    co.last_order_date_in_period " +
+                "FROM CustomerOrders co " +
+                "WHERE co.date_of_birth IS NOT NULL " +
+                "  AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, co.date_of_birth)) BETWEEN ? AND ? " +
+                "ORDER BY co.total_spent_in_period DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDate(1, java.sql.Date.valueOf(ordersStartDate));
+            pstmt.setDate(2, java.sql.Date.valueOf(ordersEndDate));
+            pstmt.setInt(3, minOrders);
+            pstmt.setInt(4, minAge);
+            pstmt.setInt(5, maxAge);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("customer_name", rs.getString("customer_name"));
+                    row.put("age", rs.getInt("age"));
+                    row.put("total_orders", rs.getInt("total_orders_in_period"));
+                    row.put("total_spent", rs.getBigDecimal("total_spent_in_period"));
+                    row.put("last_order_date", rs.getDate("last_order_date_in_period"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi tìm khách hàng theo tuổi và tiêu chí đơn hàng: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    public List<Map<String, Object>> getTopSpendersInTopCategories(int categoryLimit, int customerLimitPerCategory) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "WITH TopCategories AS ( " +
+                "    SELECT p.category_id, c.category_name, SUM(od.quantity * p.price) as category_revenue " +
+                "    FROM PRODUCTS p " +
+                "    JOIN ORDER_DETAILS od ON p.product_id = od.product_id " +
+                "    JOIN CATEGORIES c ON p.category_id = c.category_id " +
+                "    GROUP BY p.category_id, c.category_name " +
+                "    ORDER BY category_revenue DESC " +
+                "    LIMIT ? " +
+                "), CustomerSpendingPerCategory AS ( " +
+                "    SELECT " +
+                "        o.customer_id, " +
+                "        cus.first_name || ' ' || cus.last_name AS customer_name, " +
+                "        p.category_id, " +
+                "        tc.category_name, " +
+                "        SUM(od.quantity * p.price) AS amount_spent_in_category, " +
+                "        ROW_NUMBER() OVER (PARTITION BY p.category_id ORDER BY SUM(od.quantity * p.price) DESC) as rn " +
+                "    FROM ORDERS o " +
+                "    JOIN CUSTOMERS cus ON o.customer_id = cus.customer_id " +
+                "    JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
+                "    JOIN PRODUCTS p ON od.product_id = p.product_id " +
+                "    JOIN TopCategories tc ON p.category_id = tc.category_id " +
+                "    GROUP BY o.customer_id, cus.first_name, cus.last_name, p.category_id, tc.category_name " +
+                ") " +
+                "SELECT " +
+                "    category_name, " +
+                "    customer_name, " +
+                "    amount_spent_in_category " +
+                "FROM CustomerSpendingPerCategory " +
+                "WHERE rn <= ? " +
+                "ORDER BY category_name, amount_spent_in_category DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, categoryLimit);
+            pstmt.setInt(2, customerLimitPerCategory);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("category_name", rs.getString("category_name"));
+                    row.put("customer_name", rs.getString("customer_name"));
+                    row.put("amount_spent_in_category", rs.getBigDecimal("amount_spent_in_category"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy top khách hàng chi tiêu/top danh mục: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ12: Số lượng khách hàng mới đăng ký theo N năm trở lại đây (theo tháng-năm).
+    public List<Map<String, Object>> getNewCustomersByMonthForLastNYears(int years) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT TO_CHAR(created_at, 'YYYY-MM') AS registration_month_year, COUNT(customer_id) AS new_customer_count " +
+                "FROM CUSTOMERS " +
+                "WHERE created_at >= (CURRENT_DATE - CAST(? || ' years' AS INTERVAL)) " +
+                "GROUP BY TO_CHAR(created_at, 'YYYY-MM') " +
+                "ORDER BY registration_month_year";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, years);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("registration_month_year", rs.getString("registration_month_year"));
+                    row.put("new_customer_count", rs.getInt("new_customer_count"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng đăng ký mới trong " + years + " năm theo tháng: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ18: Khách hàng có địa chỉ chứa một chuỗi cụ thể (ví dụ 'Green Valley')
+    public List<Customer> getCustomersByAddressContaining(String addressPattern) throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT * FROM CUSTOMERS WHERE address ILIKE ? ORDER BY last_name, first_name";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, "%" + addressPattern + "%");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    customers.add(mapRowToCustomer(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng theo địa chỉ chứa chuỗi '" + addressPattern + "': " + e.getMessage());
+            throw e;
+        }
+        return customers;
+    }
+
+
     private Customer mapRowToCustomer(ResultSet rs) throws SQLException {
         int id = rs.getInt("customer_id");
         String username = rs.getString("username");
@@ -331,15 +535,12 @@ public class CustomerDataStore {
         String lastName = rs.getString("last_name");
         Timestamp createdAtTs = rs.getTimestamp("created_at");
         LocalDateTime createdAt = (createdAtTs != null) ? createdAtTs.toLocalDateTime() : null;
-
         String genderStr = rs.getString("gender");
         char gender = (genderStr != null && !genderStr.isEmpty()) ? genderStr.charAt(0) : '\0';
-
         String address = rs.getString("address");
         java.sql.Date dobSql = rs.getDate("date_of_birth");
         LocalDate dateOfBirth = (dobSql != null) ? dobSql.toLocalDate() : null;
         String phone = rs.getString("phone");
-
         return new Customer(id, username, email, firstName, lastName, createdAt, gender, address, dateOfBirth, phone);
     }
 }

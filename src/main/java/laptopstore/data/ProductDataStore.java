@@ -1,6 +1,7 @@
 package laptopstore.data;
 
 import java.math.BigDecimal;
+// import java.math.RoundingMode; // Not directly used in this file's new methods
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -8,24 +9,20 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+// import java.time.LocalDate; // Not directly used in this file's new methods
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.time.LocalDate; // Import LocalDate for NQ16
 
 import laptopstore.model.Product;
 import laptopstore.util.DatabaseConnection;
 
 public class ProductDataStore {
-    
-    private void resetProductSequence() throws SQLException {
-        String sql = "SELECT setval('products_product_id_seq', COALESCE((SELECT MAX(product_id) FROM products), 0))";
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
-        }
-    }
 
-    // Sử dụng constructor của Product đã được cập nhật để nhận các trường mới
+    // --- Các phương thức CRUD và truy vấn cũ giữ nguyên ---
     public Product addProduct(Product product) throws SQLException {
         if (product == null) throw new IllegalArgumentException("Product object cannot be null.");
         if (product.getSpecificProductName() == null || product.getSpecificProductName().trim().isEmpty()) {
@@ -36,9 +33,6 @@ public class ProductDataStore {
         if (product.getPrice() == null || product.getPrice().compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException("Price must be non-negative.");
         if (product.getStockQuantity() < 0) throw new IllegalArgumentException("Stock quantity must be non-negative.");
 
-        // Reset sequence trước khi thêm 
-        resetProductSequence();
-
         String sql = "INSERT INTO PRODUCTS (product_name, model, brand, description, price, stock_quantity, year_publish, category_id) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -48,7 +42,7 @@ public class ProductDataStore {
             pstmt.setString(2, product.getModel().trim());
             pstmt.setString(3, product.getBrand().trim());
             pstmt.setString(4, product.getDescription());
-            pstmt.setBigDecimal(5, product.getPrice()); // product.getPrice() đã là BigDecimal
+            pstmt.setBigDecimal(5, product.getPrice());
             pstmt.setInt(6, product.getStockQuantity());
 
             if (product.getYearPublish() != null) {
@@ -68,7 +62,6 @@ public class ProductDataStore {
                 try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
                         product.setProductId(generatedKeys.getInt(1));
-                        // Không cần set categoryName ở đây vì INSERT không trả về category_name
                         return product;
                     }
                 }
@@ -83,7 +76,6 @@ public class ProductDataStore {
     public boolean updateProduct(Product product) throws SQLException {
         if (product == null) throw new IllegalArgumentException("Product object cannot be null.");
         if (product.getProductId() <= 0) throw new IllegalArgumentException("Product ID không hợp lệ để cập nhật.");
-        // Thêm validate tương tự addProduct
 
         String sql = "UPDATE PRODUCTS SET product_name = ?, model = ?, brand = ?, description = ?, price = ?, " +
                 "stock_quantity = ?, year_publish = ?, category_id = ? " +
@@ -95,7 +87,7 @@ public class ProductDataStore {
             pstmt.setString(2, product.getModel().trim());
             pstmt.setString(3, product.getBrand().trim());
             pstmt.setString(4, product.getDescription());
-            pstmt.setBigDecimal(5, product.getPrice()); // product.getPrice() là BigDecimal
+            pstmt.setBigDecimal(5, product.getPrice());
             pstmt.setInt(6, product.getStockQuantity());
             if (product.getYearPublish() != null) {
                 pstmt.setTimestamp(7, Timestamp.valueOf(product.getYearPublish()));
@@ -171,32 +163,11 @@ public class ProductDataStore {
         return products;
     }
 
-    public List<Product> getProductsByType(String productType) throws SQLException {
-        if (productType == null || productType.trim().isEmpty()) return getAllProducts();
-        List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.category_id, c.category_name " +
-                "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
-                "WHERE p.product_type = ? ORDER BY p.product_name, p.product_id";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, productType);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    products.add(mapRowToProduct(rs));
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy sản phẩm theo loại '" + productType + "': " + e.getMessage());
-            throw e;
-        }
-        return products;
-    }
-
     public List<Product> getProductsByCategoryId(int categoryId) throws SQLException {
         if (categoryId <= 0) return new ArrayList<>();
         List<Product> products = new ArrayList<>();
         String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, p.description, p.price, p.stock_quantity, p.year_publish, p.category_id, c.category_name " +
-                "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " + // Dù lọc theo category_id, vẫn join để lấy tên cho nhất quán
+                "FROM PRODUCTS p LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
                 "WHERE p.category_id = ? ORDER BY p.product_name, p.product_id";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -229,6 +200,9 @@ public class ProductDataStore {
                     products.add(mapRowToProduct(rs));
                 }
             }
+        } catch (SQLException e) {
+            System.err.println("Error fetching latest " + limit + " products: " + e.getMessage());
+            throw e;
         }
         return products;
     }
@@ -236,13 +210,13 @@ public class ProductDataStore {
     public List<Product> getProductsWithRecentOrders() throws SQLException {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT p.*, c.category_name, COUNT(od.order_id) as order_count " +
-                    "FROM products p " +
-                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
-                    "LEFT JOIN order_details od ON p.product_id = od.product_id " +
-                    "LEFT JOIN orders o ON od.order_id = o.order_id " +
-                    "WHERE o.order_date >= CURRENT_DATE - INTERVAL '30 days' OR o.order_date IS NULL " +
-                    "GROUP BY p.product_id, c.category_name " +
-                    "ORDER BY order_count DESC";
+                "FROM products p " +
+                "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                "LEFT JOIN order_details od ON p.product_id = od.product_id " +
+                "LEFT JOIN orders o ON od.order_id = o.order_id " +
+                "WHERE o.order_date >= CURRENT_DATE - INTERVAL '30 days' OR o.order_date IS NULL " +
+                "GROUP BY p.product_id, c.category_name " + // Phải group by tất cả các cột non-aggregated của p
+                "ORDER BY order_count DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -256,13 +230,13 @@ public class ProductDataStore {
     public List<Product> getTopSellingProducts() throws SQLException {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT p.*, c.category_name, " +
-                    "SUM(od.quantity) as total_sold, " +
-                    "SUM(od.quantity * p.price) as total_revenue " +
-                    "FROM products p " +
-                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
-                    "JOIN order_details od ON p.product_id = od.product_id " +
-                    "GROUP BY p.product_id, c.category_name " +
-                    "ORDER BY total_sold DESC LIMIT 5";
+                "SUM(od.quantity) as total_sold_for_ranking, " +
+                "SUM(od.quantity * p.price) as total_revenue_for_ranking " +
+                "FROM products p " +
+                "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                "JOIN order_details od ON p.product_id = od.product_id " +
+                "GROUP BY p.product_id, c.category_name " + // Phải group by tất cả các cột non-aggregated của p
+                "ORDER BY total_sold_for_ranking DESC LIMIT 5";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -276,10 +250,10 @@ public class ProductDataStore {
     public List<Product> getNeverSoldProducts() throws SQLException {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT p.*, c.category_name " +
-                    "FROM products p " +
-                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
-                    "LEFT JOIN order_details od ON p.product_id = od.product_id " +
-                    "WHERE od.order_id IS NULL";
+                "FROM products p " +
+                "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                "LEFT JOIN order_details od ON p.product_id = od.product_id " +
+                "WHERE od.order_id IS NULL";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -293,14 +267,14 @@ public class ProductDataStore {
     public List<Product> getProductsWithInventoryAndRevenue() throws SQLException {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT p.*, c.category_name, " +
-                    "p.stock_quantity as current_stock, " +
-                    "COALESCE(SUM(od.quantity), 0) as total_sold, " +
-                    "COALESCE(SUM(od.quantity * p.price), 0) as total_revenue " +
-                    "FROM products p " +
-                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
-                    "LEFT JOIN order_details od ON p.product_id = od.product_id " +
-                    "GROUP BY p.product_id, c.category_name " +
-                    "ORDER BY total_revenue DESC";
+                "p.stock_quantity as current_stock_alias, " +
+                "COALESCE(SUM(od.quantity), 0) as total_sold_alias, " +
+                "COALESCE(SUM(od.quantity * p.price), 0) as total_revenue_alias " +
+                "FROM products p " +
+                "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                "LEFT JOIN order_details od ON p.product_id = od.product_id " +
+                "GROUP BY p.product_id, c.category_name " + // Phải group by tất cả các cột non-aggregated của p
+                "ORDER BY total_revenue_alias DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -314,12 +288,12 @@ public class ProductDataStore {
     public List<Product> getProductsWithPendingOrders() throws SQLException {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT DISTINCT p.*, c.category_name " +
-                    "FROM products p " +
-                    "LEFT JOIN categories c ON p.category_id = c.category_id " +
-                    "JOIN order_details od ON p.product_id = od.product_id " +
-                    "JOIN orders o ON od.order_id = o.order_id " +
-                    "WHERE o.status IN ('Processing', 'Pending') " +
-                    "ORDER BY p.product_id";
+                "FROM products p " +
+                "LEFT JOIN categories c ON p.category_id = c.category_id " +
+                "JOIN order_details od ON p.product_id = od.product_id " +
+                "JOIN orders o ON od.order_id = o.order_id " +
+                "WHERE o.status IN ('Processing', 'Pending') " +
+                "ORDER BY p.product_id";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -330,22 +304,220 @@ public class ProductDataStore {
         return products;
     }
 
+    public List<Product> getLowStockProducts(int threshold) throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT p.product_id, p.product_name, p.model, p.brand, c.category_name, p.stock_quantity, p.price " +
+                "FROM PRODUCTS p " +
+                "LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
+                "WHERE p.stock_quantity < ? " +
+                "ORDER BY p.stock_quantity ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, threshold);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(mapRowToProduct(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy sản phẩm tồn kho thấp: " + e.getMessage());
+            throw e;
+        }
+        return products;
+    }
+
+    public List<Map<String, Object>> getTopProductsByReturnRate(int limit, String returnedStatus) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "WITH ProductSales AS (" +
+                "    SELECT " +
+                "        od.product_id, " +
+                "        COUNT(DISTINCT od.order_id) AS total_sold_orders " +
+                "    FROM ORDER_DETAILS od " +
+                "    GROUP BY od.product_id " +
+                "), ProductReturns AS (" +
+                "    SELECT " +
+                "        od.product_id, " +
+                "        COUNT(DISTINCT o.order_id) AS total_returned_orders " +
+                "    FROM ORDERS o " +
+                "    JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
+                "    WHERE o.status = ? " +
+                "    GROUP BY od.product_id " +
+                ") " +
+                "SELECT " +
+                "    p.product_id, " +
+                "    p.product_name, " +
+                "    COALESCE(ps.total_sold_orders, 0) AS sold_in_orders, " +
+                "    COALESCE(pr.total_returned_orders, 0) AS returned_in_orders, " +
+                "    CASE " +
+                "        WHEN COALESCE(ps.total_sold_orders, 0) > 0 " +
+                "        THEN ROUND((COALESCE(pr.total_returned_orders, 0) * 100.0 / ps.total_sold_orders), 2) " +
+                "        ELSE 0 " +
+                "    END AS return_rate_percentage " +
+                "FROM PRODUCTS p " +
+                "LEFT JOIN ProductSales ps ON p.product_id = ps.product_id " +
+                "LEFT JOIN ProductReturns pr ON p.product_id = pr.product_id " +
+                "WHERE COALESCE(ps.total_sold_orders, 0) > 0 " +
+                "ORDER BY return_rate_percentage DESC, returned_in_orders DESC " +
+                "LIMIT ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, returnedStatus);
+            pstmt.setInt(2, limit);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("product_id", rs.getInt("product_id"));
+                    row.put("product_name", rs.getString("product_name"));
+                    row.put("sold_in_orders", rs.getInt("sold_in_orders"));
+                    row.put("returned_in_orders", rs.getInt("returned_in_orders"));
+                    row.put("return_rate_percentage", rs.getBigDecimal("return_rate_percentage"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy top sản phẩm theo tỷ lệ trả hàng: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    public List<Map<String, Object>> getTop20SellingProductsByRevenue(LocalDate startDate, LocalDate endDate) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT " +
+                "    p.product_name, " +
+                "    SUM(od.quantity) AS quantity_sold, " +
+                "    SUM(od.quantity * p.price) AS revenue, " +
+                "    c.category_name " +
+                "FROM ORDERS o " +
+                "JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
+                "JOIN PRODUCTS p ON od.product_id = p.product_id " +
+                "LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
+                "WHERE o.order_date BETWEEN ? AND ? " +
+                "GROUP BY p.product_id, p.product_name, c.category_name " +
+                "ORDER BY revenue DESC " +
+                "LIMIT 20";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDate(1, java.sql.Date.valueOf(startDate));
+            pstmt.setDate(2, java.sql.Date.valueOf(endDate));
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("product_name", rs.getString("product_name"));
+                    row.put("quantity_sold", rs.getInt("quantity_sold"));
+                    row.put("revenue", rs.getBigDecimal("revenue"));
+                    row.put("category_name", rs.getString("category_name"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy top 20 sản phẩm bán chạy theo doanh thu: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ11: Số lượng sản phẩm theo từng Category
+    public List<Map<String, Object>> getProductCountByCategory() throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT c.category_name, COUNT(p.product_id) AS product_count " +
+                "FROM CATEGORIES c " +
+                "LEFT JOIN PRODUCTS p ON c.category_id = p.category_id " +
+                "GROUP BY c.category_id, c.category_name " +
+                "ORDER BY product_count DESC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("category_name", rs.getString("category_name"));
+                row.put("product_count", rs.getInt("product_count"));
+                results.add(row);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi đếm sản phẩm theo danh mục: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ16: Sản phẩm được công bố/nhập trong N năm gần nhất.
+    public List<Product> getRecentlyPublishedProductsInLastNYears(int years) throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT p.*, c.category_name " +
+                "FROM PRODUCTS p " +
+                "LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
+                "WHERE p.year_publish >= (CURRENT_DATE - CAST(? || ' years' AS INTERVAL)) " +
+                "ORDER BY p.year_publish DESC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, years);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(mapRowToProduct(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy sản phẩm mới ra mắt trong " + years + " năm: " + e.getMessage());
+            throw e;
+        }
+        return products;
+    }
+
+
+    // NQ19: Sản phẩm có giá trong một khoảng nhất định
+    public List<Product> getProductsByPriceRange(BigDecimal minPrice, BigDecimal maxPrice) throws SQLException {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT p.*, c.category_name " +
+                "FROM PRODUCTS p " +
+                "LEFT JOIN CATEGORIES c ON p.category_id = c.category_id " +
+                "WHERE p.price BETWEEN ? AND ? " +
+                "ORDER BY p.price ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setBigDecimal(1, minPrice);
+            pstmt.setBigDecimal(2, maxPrice);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(mapRowToProduct(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy sản phẩm theo khoảng giá: " + e.getMessage());
+            throw e;
+        }
+        return products;
+    }
+
     private Product mapRowToProduct(ResultSet rs) throws SQLException {
         int id = rs.getInt("product_id");
         String specificProductName = rs.getString("product_name");
-        String model = rs.getString("model");
-        String brand = rs.getString("brand");
-        String description = rs.getString("description");
-        BigDecimal priceBd = rs.getBigDecimal("price"); // Lấy trực tiếp BigDecimal
-        int stockQuantity = rs.getInt("stock_quantity");
-        Timestamp yearPublishTs = rs.getTimestamp("year_publish");
+        String model = null;
+        try { model = rs.getString("model"); } catch (SQLException e) {/* ignore if not present */}
+        String brand = null;
+        try { brand = rs.getString("brand"); } catch (SQLException e) {/* ignore if not present */}
+        String description = null;
+        try { description = rs.getString("description"); } catch (SQLException e) {/* ignore if not present */}
+
+        BigDecimal priceBd = null;
+        try { priceBd = rs.getBigDecimal("price"); } catch (SQLException e) {/* ignore if not present */}
+
+        int stockQuantity = 0;
+        try { stockQuantity = rs.getInt("stock_quantity"); } catch (SQLException e) {/* ignore if not present */}
+
+        Timestamp yearPublishTs = null;
+        try { yearPublishTs = rs.getTimestamp("year_publish"); } catch (SQLException e) {/* ignore if not present */}
         LocalDateTime yearPublish = (yearPublishTs != null) ? yearPublishTs.toLocalDateTime() : null;
-        Integer categoryId = rs.getObject("category_id", Integer.class);
-        String categoryName = rs.getString("category_name"); // Lấy từ JOIN
+
+        Integer categoryId = null;
+        String categoryName = null;
+        try { categoryId = rs.getObject("category_id", Integer.class); } catch (SQLException e) { /* ignore */ }
+        try { categoryName = rs.getString("category_name"); } catch (SQLException e) { /* ignore */ }
 
         Product p = new Product(id, specificProductName, model, brand, description, priceBd, stockQuantity, yearPublish, categoryId);
-        p.setCategoryName(categoryName); // Gán tên category
-
+        if (categoryName != null) {
+            p.setCategoryName(categoryName);
+        }
         return p;
     }
 }
