@@ -502,6 +502,118 @@ public class CustomerDataStore {
         return customers;
     }
 
+    // NQ21: Khách hàng có sinh nhật trong tháng hiện tại
+    public List<Customer> getCustomersWithBirthdayThisMonth() throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone " +
+                "FROM CUSTOMERS " +
+                "WHERE EXTRACT(MONTH FROM date_of_birth) = EXTRACT(MONTH FROM CURRENT_DATE) " +
+                "ORDER BY date_of_birth ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                customers.add(mapRowToCustomer(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng có sinh nhật trong tháng hiện tại: " + e.getMessage());
+            throw e;
+        }
+        return customers;
+    }
+
+    // NQ25: Khách hàng mua sản phẩm từ ít nhất 3 thương hiệu khác nhau
+    public List<Map<String, Object>> getCustomersWithMinBrandsPurchased(int minBrands, int limit) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT c.customer_id, c.first_name, c.last_name, COUNT(DISTINCT p.brand) AS brand_count " +
+                "FROM CUSTOMERS c " +
+                "JOIN ORDERS o ON c.customer_id = o.customer_id " +
+                "JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
+                "JOIN PRODUCTS p ON od.product_id = p.product_id " +
+                "GROUP BY c.customer_id, c.first_name, c.last_name " +
+                "HAVING COUNT(DISTINCT p.brand) >= ? " +
+                "ORDER BY brand_count DESC " +
+                "LIMIT ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, minBrands);
+            pstmt.setInt(2, limit);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("customer_id", rs.getInt("customer_id"));
+                    row.put("first_name", rs.getString("first_name"));
+                    row.put("last_name", rs.getString("last_name"));
+                    row.put("brand_count", rs.getInt("brand_count"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng mua từ ít nhất " + minBrands + " thương hiệu: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ28: Top 3 khách hàng có tổng số tiền chi cao nhất
+    public List<Map<String, Object>> getTopCustomersByTotalSpent(int topN) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT c.customer_id, c.first_name, c.last_name, SUM(o.total_amount) AS total_spent " +
+                "FROM CUSTOMERS c " +
+                "JOIN ORDERS o ON c.customer_id = o.customer_id " +
+                "GROUP BY c.customer_id, c.first_name, c.last_name " +
+                "ORDER BY total_spent DESC " +
+                "LIMIT ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, topN);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("customer_id", rs.getInt("customer_id"));
+                    row.put("first_name", rs.getString("first_name"));
+                    row.put("last_name", rs.getString("last_name"));
+                    row.put("total_spent", rs.getBigDecimal("total_spent"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy top " + topN + " khách hàng chi tiêu cao nhất: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ30: Khách hàng chưa mua sản phẩm thuộc danh mục 'Office'
+    public List<Customer> getCustomersNotPurchasingCategory(String categoryName) throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT c.customer_id, c.username, c.email, c.first_name, c.last_name, c.created_at, c.gender, c.address, c.date_of_birth, c.phone " +
+                "FROM CUSTOMERS c " +
+                "WHERE NOT EXISTS (" +
+                "    SELECT 1 " +
+                "    FROM ORDERS o " +
+                "    JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
+                "    JOIN PRODUCTS p ON od.product_id = p.product_id " +
+                "    JOIN CATEGORIES cat ON p.category_id = cat.category_id " +
+                "    WHERE o.customer_id = c.customer_id " +
+                "    AND cat.category_name = ?" +
+                ") " +
+                "ORDER BY c.customer_id";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, categoryName);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    customers.add(mapRowToCustomer(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng chưa mua sản phẩm từ danh mục '" + categoryName + "': " + e.getMessage());
+            throw e;
+        }
+        return customers;
+    }
+
 
     private Customer mapRowToCustomer(ResultSet rs) throws SQLException {
         int id = rs.getInt("customer_id");

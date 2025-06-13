@@ -303,6 +303,35 @@ public class EmployeeDataStore {
         return employees;
     }
 
+    // NQ24: Nhân viên xử lý nhiều giao dịch thanh toán nhất
+    public List<Map<String, Object>> getTopEmployeeByPaymentCount(int limit) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT e.employee_id, e.first_name, e.last_name, COUNT(p.payment_id) AS payment_count " +
+                "FROM EMPLOYEES e " +
+                "JOIN PAYMENTS p ON e.employee_id = p.employee_id " +
+                "GROUP BY e.employee_id, e.first_name, e.last_name " +
+                "ORDER BY payment_count DESC " +
+                "LIMIT ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, limit);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("employee_id", rs.getInt("employee_id"));
+                    row.put("first_name", rs.getString("first_name"));
+                    row.put("last_name", rs.getString("last_name"));
+                    row.put("payment_count", rs.getInt("payment_count"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy top " + limit + " nhân viên xử lý nhiều thanh toán nhất: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
     private Employee mapRowToEmployee(ResultSet rs) throws SQLException {
         int id = rs.getInt("employee_id");
         String firstName = rs.getString("first_name");

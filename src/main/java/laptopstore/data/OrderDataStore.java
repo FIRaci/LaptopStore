@@ -668,6 +668,57 @@ public class OrderDataStore {
         }
         return results;
     }
+    // NQ22: Tháng có doanh thu cao nhất trong năm
+    public List<Map<String, Object>> getMonthWithHighestRevenue(int year) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT EXTRACT(MONTH FROM order_date) AS month, SUM(total_amount) AS total_revenue " +
+                "FROM ORDERS " +
+                "WHERE EXTRACT(YEAR FROM order_date) = ? " +
+                "GROUP BY EXTRACT(MONTH FROM order_date) " +
+                "ORDER BY total_revenue DESC " +
+                "LIMIT 1";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, year);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("month", rs.getInt("month"));
+                    row.put("total_revenue", rs.getBigDecimal("total_revenue"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy tháng có doanh thu cao nhất trong năm " + year + ": " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ26: Số lượng khách hàng mua theo từng thương hiệu
+    public List<Map<String, Object>> getCustomerCountByBrand() throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT p.brand, COUNT(DISTINCT o.customer_id) AS customer_count " +
+                "FROM ORDERS o " +
+                "JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
+                "JOIN PRODUCTS p ON od.product_id = p.product_id " +
+                "GROUP BY p.brand " +
+                "ORDER BY customer_count DESC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("brand", rs.getString("brand"));
+                row.put("customer_count", rs.getInt("customer_count"));
+                results.add(row);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy số lượng khách hàng mua theo thương hiệu: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
 
 
     private Order mapRowToOrder(ResultSet rs) throws SQLException {
