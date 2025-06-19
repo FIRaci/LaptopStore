@@ -49,13 +49,11 @@ public class Order {
         this.totalAmount = BigDecimal.ZERO;
     }
 
-    // Phương thức tính toán tổng tiền dựa trên ProductDataStore
-    // Cần truyền ProductDataStore vào để lấy giá sản phẩm
     public void calculateAndSetTotals(ProductDataStore productDb) throws SQLException {
         BigDecimal calculatedNetAmount = BigDecimal.ZERO;
         if (this.orderItems != null && productDb != null) {
             for (OrderItem item : this.orderItems) {
-                Product product = productDb.getProductById(item.getProductId()); // Lấy sản phẩm từ DB
+                Product product = productDb.getProductById(item.getProductId());
                 if (product != null && product.getPrice() != null && item.getQuantity() > 0) {
                     calculatedNetAmount = calculatedNetAmount.add(
                             product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()))

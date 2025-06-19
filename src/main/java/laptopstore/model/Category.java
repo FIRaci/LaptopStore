@@ -32,7 +32,6 @@ public class Category {
 
     @Override
     public String toString() {
-        // Quan trọng cho JComboBox hiển thị tên thay vì object reference
         return categoryName != null ? categoryName : "ID: " + categoryId;
     }
 }

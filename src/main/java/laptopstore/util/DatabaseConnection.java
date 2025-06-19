@@ -11,7 +11,6 @@ public class DatabaseConnection {
 
     static {
         try {
-            // Nạp driver JDBC cho PostgreSQL
             Class.forName("org.postgresql.Driver");
         } catch (ClassNotFoundException e) {
             System.err.println("Lỗi nghiêm trọng: Không tìm thấy PostgreSQL JDBC Driver!");
@@ -24,7 +23,6 @@ public class DatabaseConnection {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
-    // Hàm main để kiểm tra kết nối (tùy chọn)
     public static void main(String[] args) {
         try (Connection connection = getConnection()) {
             if (connection != null && !connection.isClosed()) {

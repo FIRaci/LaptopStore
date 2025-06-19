@@ -1,6 +1,6 @@
 -- PRODUCTS QUERIES
 
--- Medium 1: Top 20 sản phẩm bán chạy
+-- NQ1: Hiển thị danh sách 20 sản phẩm được bán nhiều nhất từ ngày 01/03/2024 đến ngày 01/07/2024
 WITH ProductSales AS (
     SELECT 
         p.product_name,
@@ -18,7 +18,7 @@ WITH ProductSales AS (
 )
 SELECT * FROM ProductSales;
 
--- Hard 2: Phân tích xu hướng bán hàng
+-- NQ2: Phân tích xu hướng bán hàng
 WITH MonthlyRevenue AS (
     SELECT 
         c.category_name,
@@ -100,7 +100,7 @@ GROUP BY gr.category_name, gr.monthly_growth, tp.top_products, te.best_employees
 
 -- CUSTOMERS QUERIES
 
--- Medium 1: Khách hàng 18-25 tuổi mua nhiều
+-- NQ3: Khách hàng 18-25 tuổi mua nhiều
 SELECT 
     c.first_name || ' ' || c.last_name as customer_name,
     EXTRACT(YEAR FROM AGE(CURRENT_DATE, c.date_of_birth)) as age,
@@ -114,7 +114,7 @@ AND o.order_date BETWEEN '2024-02-01' AND '2024-08-31'
 GROUP BY c.customer_id, c.first_name, c.last_name, c.date_of_birth
 HAVING COUNT(DISTINCT o.order_id) >= 5;
 
--- Hard 2: Dự đoán mua hàng
+-- NQ4: 15 khách hàng chi nhiều tiền nhất theo 15 category khác nhau 
 WITH CustomerCategorySpending AS (
     SELECT 
         c.customer_id,
@@ -141,7 +141,7 @@ LIMIT 15;
 
 -- ORDERS QUERIES
 
--- Medium 1: Đơn hàng giá trị cao nhất mỗi tháng
+-- NQ5: Đơn hàng giá trị cao nhất mỗi tháng (2024)
 WITH MonthlyMaxOrders AS (
     SELECT DISTINCT ON (DATE_TRUNC('month', order_date))
         o.order_id,
@@ -159,7 +159,7 @@ WITH MonthlyMaxOrders AS (
 )
 SELECT * FROM MonthlyMaxOrders ORDER BY order_date;
 
--- Hard 2: Đơn hàng chưa thanh toán
+-- NQ6: Đơn hàng chưa thanh toán
 SELECT o.*
 FROM ORDERS o
 JOIN CUSTOMERS c ON o.customer_id = c.customer_id
@@ -169,8 +169,8 @@ AND (c.first_name ILIKE '%z%' OR c.last_name ILIKE '%z%');
 
 -- EMPLOYEES QUERIES
 
--- Medium 1: Nhân viên chưa bán Apple iMac
-SELECT DISTINCT e.*
+-- NQ7: Nhân viên chưa bán Apple iMac
+SELECT DISTINCT e.employee_id, e.first_name, e.last_name, e.role, e.email
 FROM EMPLOYEES e
 WHERE e.employee_id NOT IN (
     SELECT DISTINCT p.employee_id
@@ -183,7 +183,7 @@ WHERE e.employee_id NOT IN (
     AND EXTRACT(YEAR FROM o.order_date) = 2024
 );
 
--- Hard 2: Top 10 nhân viên hiệu suất cao
+-- NQ8: Top 10 nhân viên hiệu suất cao
 SELECT 
     e.first_name || ' ' || e.last_name as employee_name,
     COUNT(p.payment_id)::FLOAT / NULLIF(('2024-12-31'::DATE - e.hire_day), 0) as efficiency_rate
@@ -195,7 +195,7 @@ LIMIT 10;
 
 -- PAYMENTS QUERIES
 
--- Medium 1: Top 10 payment nhiều order
+-- NQ9: Top 10 payment nhiều order
 SELECT 
     p.payment_id,
     p.payment_method,
@@ -206,7 +206,7 @@ GROUP BY p.payment_id, p.payment_method
 ORDER BY order_count DESC
 LIMIT 10;
 
--- Hard 2: Payment 1 order của nhân viên lương cao
+-- NQ10: Payment 1 order của nhân viên lương cao
 WITH TopSalaryEmployee AS (
     SELECT employee_id
     FROM EMPLOYEES

@@ -1,25 +1,21 @@
 package laptopstore.model;
 
-// Đã xóa import java.math.BigDecimal;
 
 public class OrderItem {
     private int odId;
     private int orderId;
     private int productId;
     private int quantity;
-    // Đã xóa unitPrice
-    private String productName; // Giữ lại để hiển thị nếu cần (sẽ được set từ Product)
+    private String productName;
 
     public OrderItem(int odId, int orderId, int productId, int quantity) {
         this.odId = odId;
         this.orderId = orderId;
         this.productId = productId;
         this.quantity = quantity;
-        // productName sẽ được set riêng sau khi lấy thông tin Product
     }
 
     public OrderItem() {
-        // Constructor rỗng
     }
 
 

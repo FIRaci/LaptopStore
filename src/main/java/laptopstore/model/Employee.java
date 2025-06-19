@@ -17,7 +17,6 @@ public class Employee {
     private LocalDate hireDay;
     private String email; // Đã thêm email
 
-    // Constructor chính sử dụng BigDecimal
     public Employee(int employeeId, String firstName, String lastName, String phone, String address, char gender, String bankNumber, String role, BigDecimal salary, String workDay, LocalDate hireDay, String email) {
         this.employeeId = employeeId;
         this.firstName = firstName;
@@ -35,7 +34,6 @@ public class Employee {
 
     public Employee() {}
 
-    // Constructor phụ để chuyển từ double (có thể bỏ nếu không dùng nhiều)
     public Employee(int employeeId, String firstName, String lastName, String phone, String address, char gender, String bankNumber, String role, double salary, String workDay, LocalDate hireDay, String email) {
         this(employeeId, firstName, lastName, phone, address, gender, bankNumber, role, BigDecimal.valueOf(salary), workDay, hireDay, email);
     }

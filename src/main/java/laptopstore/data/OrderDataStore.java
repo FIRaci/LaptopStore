@@ -1,7 +1,6 @@
 package laptopstore.data;
 
 import java.math.BigDecimal;
-// import java.math.RoundingMode; // Not directly used in this file's new methods
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,7 +15,6 @@ import java.util.Map;
 
 import laptopstore.model.Order;
 import laptopstore.model.OrderItem;
-// import laptopstore.model.Product; // Not directly used in this file's new methods
 import laptopstore.util.DatabaseConnection;
 
 public class OrderDataStore {
@@ -27,7 +25,6 @@ public class OrderDataStore {
         this.productDb = new ProductDataStore();
     }
 
-    // ... (Các phương thức add, update, delete, getById, getAll, ... và các truy vấn cũ giữ nguyên)
     public Order addOrder(Order order) throws SQLException {
         if (order == null) throw new IllegalArgumentException("Order object cannot be null.");
         if (order.getCustomerId() <= 0) throw new IllegalArgumentException("Customer ID is invalid for the order.");
@@ -520,31 +517,34 @@ public class OrderDataStore {
 
     public List<Map<String, Object>> getHighestValueOrderPerMonth(int year) throws SQLException {
         List<Map<String, Object>> results = new ArrayList<>();
-        String sql = "WITH RankedOrders AS ( " +
-                "    SELECT " +
+        String sql = "WITH MonthlyMaxOrders AS ( " +
+                "    SELECT DISTINCT ON (DATE_TRUNC('month', order_date)) " +
                 "        o.order_id, " +
-                "        TO_CHAR(o.order_date, 'YYYY-MM') AS order_month, " +
-                "        c.first_name || ' ' || c.last_name AS customer_name, " +
+                "        o.order_date, " +
                 "        o.total_amount, " +
-                "        ROW_NUMBER() OVER (PARTITION BY TO_CHAR(o.order_date, 'YYYY-MM') ORDER BY o.total_amount DESC) as rn " +
+                "        c.first_name || ' ' || c.last_name as customer_name, " +
+                "        e.first_name || ' ' || e.last_name as employee_name, " +
+                "        p.payment_method " +
                 "    FROM ORDERS o " +
                 "    JOIN CUSTOMERS c ON o.customer_id = c.customer_id " +
+                "    JOIN PAYMENTS p ON o.payment_id = p.payment_id " +
+                "    JOIN EMPLOYEES e ON p.employee_id = e.employee_id " +
                 "    WHERE EXTRACT(YEAR FROM o.order_date) = ? " +
+                "    ORDER BY DATE_TRUNC('month', order_date), o.total_amount DESC " +
                 ") " +
-                "SELECT order_month, order_id, customer_name, total_amount " +
-                "FROM RankedOrders " +
-                "WHERE rn = 1 " +
-                "ORDER BY order_month";
+                "SELECT * FROM MonthlyMaxOrders ORDER BY order_date";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, year);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
-                    row.put("order_month", rs.getString("order_month"));
                     row.put("order_id", rs.getInt("order_id"));
-                    row.put("customer_name", rs.getString("customer_name"));
+                    row.put("order_date", rs.getDate("order_date"));
                     row.put("total_amount", rs.getBigDecimal("total_amount"));
+                    row.put("customer_name", rs.getString("customer_name"));
+                    row.put("employee_name", rs.getString("employee_name"));
+                    row.put("payment_method", rs.getString("payment_method"));
                     results.add(row);
                 }
             }
@@ -557,38 +557,34 @@ public class OrderDataStore {
 
     public List<Map<String, Object>> getUnpaidOrdersForSpecificMaleCustomers(String namePatternFragment) throws SQLException {
         List<Map<String, Object>> results = new ArrayList<>();
-        String sql = "SELECT " +
-                "    o.order_id, " +
-                "    c.first_name || ' ' || c.last_name AS customer_name, " +
-                "    o.order_date, " +
-                "    o.total_amount, " +
-                "    o.status " +
+        String sql = "SELECT o.* " +
                 "FROM ORDERS o " +
                 "JOIN CUSTOMERS c ON o.customer_id = c.customer_id " +
-                "WHERE c.gender = 'M' " +
-                "  AND (c.first_name ILIKE ? OR c.last_name ILIKE ? OR c.username ILIKE ?) " +
-                "  AND (o.payment_id IS NULL OR o.status IN ('Pending', 'Awaiting Payment')) " +
-                "ORDER BY o.order_date DESC";
+                "WHERE o.payment_id IS NULL " + 
+                "AND c.gender = 'M' " +
+                "AND (c.first_name ILIKE ? OR c.last_name ILIKE ?)";
+
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            String likePattern = "%" + namePatternFragment.toLowerCase() + "%";
+            String likePattern = "%" + namePatternFragment + "%";
             pstmt.setString(1, likePattern);
             pstmt.setString(2, likePattern);
-            pstmt.setString(3, likePattern);
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
                     row.put("order_id", rs.getInt("order_id"));
-                    row.put("customer_name", rs.getString("customer_name"));
+                    row.put("customer_id", rs.getInt("customer_id")); 
+                    row.put("payment_id", rs.getObject("payment_id"));
                     row.put("order_date", rs.getDate("order_date"));
-                    row.put("total_amount", rs.getBigDecimal("total_amount"));
                     row.put("status", rs.getString("status"));
+                    row.put("net_amount", rs.getBigDecimal("net_amount")); 
+                    row.put("tax", rs.getBigDecimal("tax"));
+                    row.put("total_amount", rs.getBigDecimal("total_amount"));
+                    row.put("shipping_address", rs.getString("shipping_address"));
+                    row.put("notes", rs.getString("notes"));
                     results.add(row);
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy đơn hàng chưa thanh toán của khách hàng nam cụ thể: " + e.getMessage());
-            throw e;
         }
         return results;
     }
@@ -633,7 +629,7 @@ public class OrderDataStore {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
                     row.put("status", rs.getString("status"));
-                    row.put("order_count", rs.getInt("order_count")); // Sử dụng tên cột mới
+                    row.put("order_count", rs.getInt("order_count"));
                     results.add(row);
                 }
             }
@@ -667,6 +663,57 @@ public class OrderDataStore {
             }
         } catch (SQLException e) {
             System.err.println("Lỗi SQL khi lấy tổng doanh thu " + years + " năm qua theo năm: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+    // NQ22: Tháng có doanh thu cao nhất trong năm
+    public List<Map<String, Object>> getMonthWithHighestRevenue(int year) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT EXTRACT(MONTH FROM order_date) AS month, SUM(total_amount) AS total_revenue " +
+                "FROM ORDERS " +
+                "WHERE EXTRACT(YEAR FROM order_date) = ? " +
+                "GROUP BY EXTRACT(MONTH FROM order_date) " +
+                "ORDER BY total_revenue DESC " +
+                "LIMIT 1";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, year);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("month", rs.getInt("month"));
+                    row.put("total_revenue", rs.getBigDecimal("total_revenue"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy tháng có doanh thu cao nhất trong năm " + year + ": " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ26: Số lượng khách hàng mua theo từng thương hiệu
+    public List<Map<String, Object>> getCustomerCountByBrand() throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT p.brand, COUNT(DISTINCT o.customer_id) AS customer_count " +
+                "FROM ORDERS o " +
+                "JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
+                "JOIN PRODUCTS p ON od.product_id = p.product_id " +
+                "GROUP BY p.brand " +
+                "ORDER BY customer_count DESC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("brand", rs.getString("brand"));
+                row.put("customer_count", rs.getInt("customer_count"));
+                results.add(row);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy số lượng khách hàng mua theo thương hiệu: " + e.getMessage());
             throw e;
         }
         return results;

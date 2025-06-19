@@ -10,7 +10,7 @@ public class Customer {
     private String firstName;
     private String lastName;
     private LocalDateTime createdAt;
-    private char gender; // 'M', 'F', hoặc 'O' (Other) - CSDL nên cho phép NULL hoặc có giá trị mặc định
+    private char gender;
     private String address;
     private LocalDate dateOfBirth;
     private String phone;
@@ -29,7 +29,6 @@ public class Customer {
     }
 
     public Customer() {
-        // Constructor rỗng có thể hữu ích
     }
 
     @Override

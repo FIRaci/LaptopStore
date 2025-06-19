@@ -15,7 +15,6 @@ public class Product {
     private String specificProductName;
     private Integer categoryId;
     private String categoryName;
-    // Đã xóa productType
 
     public Product(int productId, String specificProductName, String model, String brand, String description,
                    BigDecimal price, int stockQuantity, LocalDateTime yearPublish,
@@ -29,7 +28,7 @@ public class Product {
         this.stockQuantity = stockQuantity;
         this.yearPublish = yearPublish;
         this.categoryId = categoryId;
-        // Đã xóa gán this.productType
+
     }
 
     public Product() {
@@ -45,7 +44,7 @@ public class Product {
                 categoryName != null ? categoryName : (categoryId != null ? "CatID: " + categoryId : "N/A"),
                 price != null ? price.toPlainString() + " VNĐ" : "N/A",
                 stockQuantity,
-                yearPublish != null ? yearPublish.toLocalDate().toString() : "N/A" // Chỉ hiển thị ngày cho gọn
+                yearPublish != null ? yearPublish.toLocalDate().toString() : "N/A"
         );
     }
 

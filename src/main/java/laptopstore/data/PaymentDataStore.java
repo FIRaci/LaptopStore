@@ -19,7 +19,6 @@ import laptopstore.util.DatabaseConnection;
 
 public class PaymentDataStore {
 
-    // ... (Các phương thức add, update, delete, getById, getAll, ... và các truy vấn cũ giữ nguyên)
     public Payment addPayment(Payment payment) throws SQLException {
         if (payment == null) throw new IllegalArgumentException("Payment object cannot be null.");
         if (payment.getPaymentMethod() == null || payment.getPaymentMethod().trim().isEmpty()) throw new IllegalArgumentException("Payment method is required.");
@@ -175,12 +174,11 @@ public class PaymentDataStore {
         String sql = "SELECT " +
                 "    p.payment_id, " +
                 "    p.payment_method, " +
-                "    p.total_amount AS payment_total_amount, " +
-                "    COUNT(o.order_id) AS number_of_orders_paid " +
+                "    COUNT(o.order_id) as order_count " +
                 "FROM PAYMENTS p " +
-                "JOIN ORDERS o ON p.payment_id = o.payment_id " +
-                "GROUP BY p.payment_id, p.payment_method, p.total_amount " +
-                "ORDER BY number_of_orders_paid DESC, p.total_amount DESC " +
+                "LEFT JOIN ORDERS o ON p.payment_id = o.payment_id " +
+                "GROUP BY p.payment_id, p.payment_method " +
+                "ORDER BY order_count DESC " +
                 "LIMIT ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -190,59 +188,43 @@ public class PaymentDataStore {
                     Map<String, Object> row = new HashMap<>();
                     row.put("payment_id", rs.getInt("payment_id"));
                     row.put("payment_method", rs.getString("payment_method"));
-                    row.put("payment_total_amount", rs.getBigDecimal("payment_total_amount"));
-                    row.put("number_of_orders_paid", rs.getInt("number_of_orders_paid"));
+                    row.put("order_count", rs.getInt("order_count"));
                     results.add(row);
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy top payment theo số lượng order: " + e.getMessage());
-            throw e;
         }
         return results;
     }
 
     public List<Map<String, Object>> getSingleOrderPaymentsByHighestPaidEmployee() throws SQLException {
         List<Map<String, Object>> results = new ArrayList<>();
-        String sql = "WITH HighestSalary AS ( " +
-                "    SELECT MAX(salary) as max_salary FROM EMPLOYEES " +
-                "), TopEmployees AS ( " +
-                "    SELECT employee_id, first_name, last_name, salary " +
-                "    FROM EMPLOYEES, HighestSalary " +
-                "    WHERE salary = HighestSalary.max_salary " +
-                "), EmployeePayments AS ( " +
-                "    SELECT  " +
-                "        p.payment_id,  " +
-                "        p.total_amount AS payment_amount, " +
-                "        p.payment_method, " +
-                "        te.first_name || ' ' || te.last_name AS employee_name, " +
-                "        te.salary AS employee_salary, " +
-                "        COUNT(o.order_id) AS orders_linked_count, " +
-                "        MIN(o.order_id) AS single_order_id " +
-                "    FROM PAYMENTS p " +
-                "    JOIN TopEmployees te ON p.employee_id = te.employee_id " +
-                "    LEFT JOIN ORDERS o ON p.payment_id = o.payment_id " +
-                "    GROUP BY p.payment_id, p.total_amount, p.payment_method, te.first_name, te.last_name, te.salary " +
-                "    HAVING COUNT(o.order_id) = 1 " +
+        String sql = "WITH TopSalaryEmployee AS ( " +
+                "    SELECT employee_id " +
+                "    FROM EMPLOYEES " +
+                "    ORDER BY salary DESC " +
+                "    LIMIT 1 " +
                 ") " +
-                "SELECT * FROM EmployeePayments ORDER BY employee_name, payment_id";
-
+                "SELECT p.* " +
+                "FROM PAYMENTS p " +
+                "JOIN TopSalaryEmployee tse ON p.employee_id = tse.employee_id " +
+                "WHERE ( " +
+                "    SELECT COUNT(order_id) " +
+                "    FROM ORDERS " +
+                "    WHERE payment_id = p.payment_id " +
+                ") = 1";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 Map<String, Object> row = new HashMap<>();
-                row.put("employee_name", rs.getString("employee_name"));
-                row.put("employee_salary", rs.getBigDecimal("employee_salary"));
                 row.put("payment_id", rs.getInt("payment_id"));
-                row.put("payment_amount", rs.getBigDecimal("payment_amount"));
+                row.put("employee_id", rs.getInt("employee_id"));
+                row.put("payment_date", rs.getTimestamp("payment_date"));
                 row.put("payment_method", rs.getString("payment_method"));
-                row.put("order_id_linked", rs.getInt("single_order_id"));
+                row.put("total_amount", rs.getBigDecimal("total_amount"));
+                row.put("notes", rs.getString("notes"));
                 results.add(row);
             }
-        } catch (SQLException e) {
-            System.err.println("Lỗi SQL khi lấy payment của nhân viên lương cao nhất: " + e.getMessage());
-            throw e;
         }
         return results;
     }

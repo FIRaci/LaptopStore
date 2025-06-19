@@ -1,7 +1,6 @@
 package laptopstore.data;
 
 import java.math.BigDecimal;
-// import java.math.RoundingMode; // Not directly used in this file's new methods
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -9,20 +8,18 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
-// import java.time.LocalDate; // Not directly used in this file's new methods
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.time.LocalDate; // Import LocalDate for NQ16
+import java.util.Map; // Import LocalDate for NQ16
 
 import laptopstore.model.Product;
 import laptopstore.util.DatabaseConnection;
 
 public class ProductDataStore {
 
-    // --- Các phương thức CRUD và truy vấn cũ giữ nguyên ---
     public Product addProduct(Product product) throws SQLException {
         if (product == null) throw new IllegalArgumentException("Product object cannot be null.");
         if (product.getSpecificProductName() == null || product.getSpecificProductName().trim().isEmpty()) {
@@ -215,7 +212,7 @@ public class ProductDataStore {
                 "LEFT JOIN order_details od ON p.product_id = od.product_id " +
                 "LEFT JOIN orders o ON od.order_id = o.order_id " +
                 "WHERE o.order_date >= CURRENT_DATE - INTERVAL '30 days' OR o.order_date IS NULL " +
-                "GROUP BY p.product_id, c.category_name " + // Phải group by tất cả các cột non-aggregated của p
+                "GROUP BY p.product_id, c.category_name " +
                 "ORDER BY order_count DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -235,7 +232,7 @@ public class ProductDataStore {
                 "FROM products p " +
                 "LEFT JOIN categories c ON p.category_id = c.category_id " +
                 "JOIN order_details od ON p.product_id = od.product_id " +
-                "GROUP BY p.product_id, c.category_name " + // Phải group by tất cả các cột non-aggregated của p
+                "GROUP BY p.product_id, c.category_name " +
                 "ORDER BY total_sold_for_ranking DESC LIMIT 5";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -273,7 +270,7 @@ public class ProductDataStore {
                 "FROM products p " +
                 "LEFT JOIN categories c ON p.category_id = c.category_id " +
                 "LEFT JOIN order_details od ON p.product_id = od.product_id " +
-                "GROUP BY p.product_id, c.category_name " + // Phải group by tất cả các cột non-aggregated của p
+                "GROUP BY p.product_id, c.category_name " +
                 "ORDER BY total_revenue_alias DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -420,11 +417,16 @@ public class ProductDataStore {
     // NQ11: Số lượng sản phẩm theo từng Category
     public List<Map<String, Object>> getProductCountByCategory() throws SQLException {
         List<Map<String, Object>> results = new ArrayList<>();
-        String sql = "SELECT c.category_name, COUNT(p.product_id) AS product_count " +
+        String sql = "WITH ProductCounts AS ( " +
+                "    SELECT category_id, COUNT(*) AS product_count " +
+                "    FROM PRODUCTS " +
+                "    GROUP BY category_id " +
+                ") " +
+                "SELECT c.category_name, COALESCE(pc.product_count, 0) AS product_count " +
                 "FROM CATEGORIES c " +
-                "LEFT JOIN PRODUCTS p ON c.category_id = p.category_id " +
-                "GROUP BY c.category_id, c.category_name " +
+                "LEFT JOIN ProductCounts pc ON c.category_id = pc.category_id " +
                 "ORDER BY product_count DESC";
+
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -489,30 +491,135 @@ public class ProductDataStore {
         return products;
     }
 
+    public List<Map<String, Object>> getCategorySalesAnalysis(LocalDate startDate, LocalDate endDate) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "WITH MonthlyRevenue AS ( " +
+                "    SELECT  " +
+                "        c.category_name, " +
+                "        DATE_TRUNC('month', o.order_date) as month, " +
+                "        SUM(od.quantity * p.price) as monthly_revenue " +
+                "    FROM categories c " +
+                "    JOIN PRODUCTS p ON c.category_id = p.category_id " +
+                "    JOIN ORDER_DETAILS od ON p.product_id = od.product_id " +
+                "    JOIN ORDERS o ON od.order_id = o.order_id " +
+                "    WHERE o.order_date BETWEEN ? AND ? " +
+                "    GROUP BY c.category_name, DATE_TRUNC('month', o.order_date) " +
+                "), " +
+                "GrowthRateCalc AS ( " +
+                "    SELECT  " +
+                "        category_name, " +
+                "        month, " +
+                "        monthly_revenue - LAG(monthly_revenue) OVER (PARTITION BY category_name ORDER BY month) as growth " +
+                "    FROM MonthlyRevenue " +
+                "), " +
+                "GrowthRate AS ( " +
+                "    SELECT  " +
+                "        category_name, " +
+                "        ARRAY_AGG(growth) as monthly_growth " +
+                "    FROM GrowthRateCalc " +
+                "    GROUP BY category_name " +
+                "), " +
+                "TopProducts AS ( " +
+                "    SELECT  " +
+                "        category_name, " +
+                "        ARRAY_AGG(product_name) as top_products " +
+                "    FROM ( " +
+                "        SELECT  " +
+                "            c.category_name, " +
+                "            p.product_name, " +
+                "            ROW_NUMBER() OVER (PARTITION BY c.category_name ORDER BY SUM(od.quantity * p.price) DESC) as rn " +
+                "        FROM categories c " +
+                "        JOIN PRODUCTS p ON c.category_id = p.category_id " +
+                "        JOIN ORDER_DETAILS od ON p.product_id = od.product_id " +
+                "        JOIN ORDERS o ON od.order_id = o.order_id " +
+                "        WHERE o.order_date BETWEEN ? AND ? " +
+                "        GROUP BY c.category_name, p.product_name " +
+                "    ) ranked " +
+                "    WHERE rn <= 3 " +
+                "    GROUP BY category_name " +
+                "), " +
+                "TopEmployees AS ( " +
+                "    SELECT  " +
+                "        category_name, " +
+                "        ARRAY_AGG(employee_name ORDER BY total_amount DESC) as best_employees " +
+                "    FROM ( " +
+                "        SELECT  " +
+                "            c.category_name, " +
+                "            e.first_name || ' ' || e.last_name as employee_name, " +
+                "            SUM(o.total_amount) as total_amount, " +
+                "            ROW_NUMBER() OVER (PARTITION BY c.category_name ORDER BY SUM(o.total_amount) DESC) as rn " +
+                "        FROM categories c " +
+                "        JOIN PRODUCTS p ON c.category_id = p.category_id " +
+                "        JOIN ORDER_DETAILS od ON p.product_id = od.product_id " +
+                "        JOIN ORDERS o ON od.order_id = o.order_id " +
+                "        JOIN PAYMENTS py ON o.payment_id = py.payment_id " +
+                "        JOIN EMPLOYEES e ON py.employee_id = e.employee_id " +
+                "        WHERE o.order_date BETWEEN ? AND ? " +
+                "        GROUP BY c.category_name, e.first_name, e.last_name " +
+                "    ) ranked " +
+                "    WHERE rn <= 3 " +
+                "    GROUP BY category_name " +
+                ") " +
+                "SELECT  " +
+                "    gr.category_name, " +
+                "    gr.monthly_growth, " +
+                "    tp.top_products, " +
+                "    te.best_employees, " +
+                "    SUM(mr.monthly_revenue) as total_revenue " +
+                "FROM GrowthRate gr " +
+                "JOIN TopProducts tp ON gr.category_name = tp.category_name " +
+                "JOIN TopEmployees te ON gr.category_name = te.category_name " +
+                "JOIN MonthlyRevenue mr ON gr.category_name = mr.category_name " +
+                "GROUP BY gr.category_name, gr.monthly_growth, tp.top_products, te.best_employees";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDate(1, java.sql.Date.valueOf(startDate));
+            pstmt.setDate(2, java.sql.Date.valueOf(endDate));
+            pstmt.setDate(3, java.sql.Date.valueOf(startDate));
+            pstmt.setDate(4, java.sql.Date.valueOf(endDate));
+            pstmt.setDate(5, java.sql.Date.valueOf(startDate));
+            pstmt.setDate(6, java.sql.Date.valueOf(endDate));
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("category_name", rs.getString("category_name"));
+                    row.put("monthly_growth", rs.getArray("monthly_growth"));
+                    row.put("top_products", rs.getArray("top_products"));
+                    row.put("best_employees", rs.getArray("best_employees"));
+                    row.put("total_revenue", rs.getBigDecimal("total_revenue"));
+                    results.add(row);
+                }
+            }
+        }
+        return results;
+    }
+
     private Product mapRowToProduct(ResultSet rs) throws SQLException {
         int id = rs.getInt("product_id");
         String specificProductName = rs.getString("product_name");
         String model = null;
-        try { model = rs.getString("model"); } catch (SQLException e) {/* ignore if not present */}
+        try { model = rs.getString("model"); } catch (SQLException e) {}
         String brand = null;
-        try { brand = rs.getString("brand"); } catch (SQLException e) {/* ignore if not present */}
+        try { brand = rs.getString("brand"); } catch (SQLException e) {}
         String description = null;
-        try { description = rs.getString("description"); } catch (SQLException e) {/* ignore if not present */}
+        try { description = rs.getString("description"); } catch (SQLException e) {}
 
         BigDecimal priceBd = null;
-        try { priceBd = rs.getBigDecimal("price"); } catch (SQLException e) {/* ignore if not present */}
+        try { priceBd = rs.getBigDecimal("price"); } catch (SQLException e) {}
 
         int stockQuantity = 0;
-        try { stockQuantity = rs.getInt("stock_quantity"); } catch (SQLException e) {/* ignore if not present */}
+        try { stockQuantity = rs.getInt("stock_quantity"); } catch (SQLException e) {}
 
         Timestamp yearPublishTs = null;
-        try { yearPublishTs = rs.getTimestamp("year_publish"); } catch (SQLException e) {/* ignore if not present */}
+        try { yearPublishTs = rs.getTimestamp("year_publish"); } catch (SQLException e) {}
         LocalDateTime yearPublish = (yearPublishTs != null) ? yearPublishTs.toLocalDateTime() : null;
 
         Integer categoryId = null;
         String categoryName = null;
-        try { categoryId = rs.getObject("category_id", Integer.class); } catch (SQLException e) { /* ignore */ }
-        try { categoryName = rs.getString("category_name"); } catch (SQLException e) { /* ignore */ }
+        try { categoryId = rs.getObject("category_id", Integer.class); } catch (SQLException e) {}
+        try { categoryName = rs.getString("category_name"); } catch (SQLException e) {}
 
         Product p = new Product(id, specificProductName, model, brand, description, priceBd, stockQuantity, yearPublish, categoryId);
         if (categoryName != null) {

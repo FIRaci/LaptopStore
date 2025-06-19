@@ -31,7 +31,7 @@ public class CategoryDataStore {
                 }
             }
         } catch (SQLException e) {
-            if ("23505".equals(e.getSQLState())) { // UNIQUE constraint violation
+            if ("23505".equals(e.getSQLState())) {
                 throw new SQLException("Tên category '" + category.getCategoryName().trim() + "' đã tồn tại.", e.getSQLState(), e);
             }
             System.err.println("Lỗi SQL khi thêm category: " + e.getMessage());

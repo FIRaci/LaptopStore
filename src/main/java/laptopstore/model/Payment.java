@@ -11,11 +11,11 @@ public class Payment {
     private String paymentMethod;
     private String notes;
 
-    private String employeeName; // Để hiển thị (lấy từ JOIN)
+    private String employeeName;
 
     public Payment(int paymentId, int employeeId, LocalDateTime paymentDate, BigDecimal totalAmount, String paymentMethod, String notes) {
         this.paymentId = paymentId;
-        this.employeeId = employeeId; // employeeId có thể là 0 nếu không có nhân viên liên quan (CSDL cho phép NULL)
+        this.employeeId = employeeId;
         this.paymentDate = paymentDate;
         this.totalAmount = totalAmount;
         this.paymentMethod = paymentMethod;

@@ -9,7 +9,6 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-// import java.time.Period; // Không dùng trực tiếp
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +19,6 @@ import laptopstore.util.DatabaseConnection;
 
 public class CustomerDataStore {
 
-    // --- Các phương thức CRUD và truy vấn cũ giữ nguyên ---
     public Customer addCustomer(Customer customer) throws SQLException {
         if (customer == null) throw new IllegalArgumentException("Customer object cannot be null.");
         if (customer.getUsername() == null || customer.getUsername().trim().isEmpty()) throw new IllegalArgumentException("Username is required.");
@@ -221,7 +219,7 @@ public class CustomerDataStore {
         String sql = "SELECT c.*, COUNT(o.order_id) as order_count_for_ranking " +
                 "FROM customers c " +
                 "LEFT JOIN orders o ON c.customer_id = o.customer_id " +
-                "GROUP BY c.customer_id " + // PostgreSQL 9.1+ chỉ cần PK là đủ cho GROUP BY các cột khác của c
+                "GROUP BY c.customer_id " +
                 "ORDER BY order_count_for_ranking DESC " +
                 "LIMIT 5";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -256,7 +254,7 @@ public class CustomerDataStore {
                 "JOIN orders o ON c.customer_id = o.customer_id " +
                 "JOIN order_details od ON o.order_id = od.order_id " +
                 "JOIN products p ON od.product_id = p.product_id " +
-                "WHERE p.category_id = 1 " + // Giả định category_id = 1 là Gaming Laptop
+                "WHERE p.category_id = 1 " +
                 "GROUP BY c.customer_id " +
                 "ORDER BY gaming_orders_for_ranking DESC";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -376,48 +374,35 @@ public class CustomerDataStore {
     public List<Map<String, Object>> findCustomersByAgeAndOrderCriteria(
             int minAge, int maxAge, int minOrders, LocalDate ordersStartDate, LocalDate ordersEndDate) throws SQLException {
         List<Map<String, Object>> results = new ArrayList<>();
-        String sql = "WITH CustomerOrders AS (" +
-                "    SELECT " +
-                "        c.customer_id, " +
-                "        c.first_name, " +
-                "        c.last_name, " +
-                "        c.date_of_birth, " +
-                "        COUNT(o.order_id) AS total_orders_in_period, " +
-                "        SUM(o.total_amount) AS total_spent_in_period, " +
-                "        MAX(o.order_date) AS last_order_date_in_period " +
-                "    FROM CUSTOMERS c " +
-                "    JOIN ORDERS o ON c.customer_id = o.customer_id " +
-                "    WHERE o.order_date BETWEEN ? AND ? " +
-                "    GROUP BY c.customer_id, c.first_name, c.last_name, c.date_of_birth " +
-                "    HAVING COUNT(o.order_id) >= ? " +
-                ") " +
-                "SELECT " +
-                "    co.first_name || ' ' || co.last_name AS customer_name, " +
-                "    EXTRACT(YEAR FROM AGE(CURRENT_DATE, co.date_of_birth)) AS age, " +
-                "    co.total_orders_in_period, " +
-                "    co.total_spent_in_period, " +
-                "    co.last_order_date_in_period " +
-                "FROM CustomerOrders co " +
-                "WHERE co.date_of_birth IS NOT NULL " +
-                "  AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, co.date_of_birth)) BETWEEN ? AND ? " +
-                "ORDER BY co.total_spent_in_period DESC";
+        String sql = "SELECT " +
+                "    c.first_name || ' ' || c.last_name as customer_name, " +
+                "    EXTRACT(YEAR FROM AGE(CURRENT_DATE, c.date_of_birth)) as age, " +
+                "    COUNT(DISTINCT o.order_id) as total_orders, " +
+                "    SUM(o.total_amount) as total_spent, " +
+                "    MAX(o.order_date) as last_order_date " +
+                "FROM CUSTOMERS c " +
+                "JOIN ORDERS o ON c.customer_id = o.customer_id " +
+                "WHERE EXTRACT(YEAR FROM AGE(CURRENT_DATE, c.date_of_birth)) BETWEEN ? AND ? " +
+                "AND o.order_date BETWEEN ? AND ? " +
+                "GROUP BY c.customer_id, c.first_name, c.last_name, c.date_of_birth " +
+                "HAVING COUNT(DISTINCT o.order_id) >= ? " ;
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setDate(1, java.sql.Date.valueOf(ordersStartDate));
-            pstmt.setDate(2, java.sql.Date.valueOf(ordersEndDate));
-            pstmt.setInt(3, minOrders);
-            pstmt.setInt(4, minAge);
-            pstmt.setInt(5, maxAge);
+            pstmt.setInt(1, minAge);
+            pstmt.setInt(2, maxAge);
+            pstmt.setDate(3, java.sql.Date.valueOf(ordersStartDate));
+            pstmt.setDate(4, java.sql.Date.valueOf(ordersEndDate));
+            pstmt.setInt(5, minOrders);
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     Map<String, Object> row = new HashMap<>();
                     row.put("customer_name", rs.getString("customer_name"));
                     row.put("age", rs.getInt("age"));
-                    row.put("total_orders", rs.getInt("total_orders_in_period"));
-                    row.put("total_spent", rs.getBigDecimal("total_spent_in_period"));
-                    row.put("last_order_date", rs.getDate("last_order_date_in_period"));
+                    row.put("total_orders", rs.getInt("total_orders"));
+                    row.put("total_spent", rs.getBigDecimal("total_spent"));
+                    row.put("last_order_date", rs.getDate("last_order_date"));
                     results.add(row);
                 }
             }
@@ -430,49 +415,39 @@ public class CustomerDataStore {
 
     public List<Map<String, Object>> getTopSpendersInTopCategories(int categoryLimit, int customerLimitPerCategory) throws SQLException {
         List<Map<String, Object>> results = new ArrayList<>();
-        String sql = "WITH TopCategories AS ( " +
-                "    SELECT p.category_id, c.category_name, SUM(od.quantity * p.price) as category_revenue " +
-                "    FROM PRODUCTS p " +
-                "    JOIN ORDER_DETAILS od ON p.product_id = od.product_id " +
-                "    JOIN CATEGORIES c ON p.category_id = c.category_id " +
-                "    GROUP BY p.category_id, c.category_name " +
-                "    ORDER BY category_revenue DESC " +
-                "    LIMIT ? " +
-                "), CustomerSpendingPerCategory AS ( " +
+        String sql = "WITH CustomerCategorySpending AS (" +
                 "    SELECT " +
-                "        o.customer_id, " +
-                "        cus.first_name || ' ' || cus.last_name AS customer_name, " +
-                "        p.category_id, " +
-                "        tc.category_name, " +
-                "        SUM(od.quantity * p.price) AS amount_spent_in_category, " +
-                "        ROW_NUMBER() OVER (PARTITION BY p.category_id ORDER BY SUM(od.quantity * p.price) DESC) as rn " +
-                "    FROM ORDERS o " +
-                "    JOIN CUSTOMERS cus ON o.customer_id = cus.customer_id " +
+                "        c.customer_id, " +
+                "        c.first_name || ' ' || c.last_name as customer_name, " +
+                "        cat.category_name, " +
+                "        SUM(od.quantity * p.price) as total_spent, " +
+                "        ROW_NUMBER() OVER (PARTITION BY cat.category_name ORDER BY SUM(od.quantity * p.price) DESC) as rn " +
+                "    FROM CUSTOMERS c " +
+                "    JOIN ORDERS o ON c.customer_id = o.customer_id " +
                 "    JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
                 "    JOIN PRODUCTS p ON od.product_id = p.product_id " +
-                "    JOIN TopCategories tc ON p.category_id = tc.category_id " +
-                "    GROUP BY o.customer_id, cus.first_name, cus.last_name, p.category_id, tc.category_name " +
+                "    JOIN CATEGORIES cat ON p.category_id = cat.category_id " +
+                "    WHERE o.order_date BETWEEN '2024-01-01' AND '2024-12-31' " +
+                "    GROUP BY c.customer_id, c.first_name, c.last_name, cat.category_name " +
                 ") " +
                 "SELECT " +
                 "    category_name, " +
                 "    customer_name, " +
-                "    amount_spent_in_category " +
-                "FROM CustomerSpendingPerCategory " +
-                "WHERE rn <= ? " +
-                "ORDER BY category_name, amount_spent_in_category DESC";
+                "    total_spent " +
+                "FROM CustomerCategorySpending " +
+                "WHERE rn = 1 " +
+                "ORDER BY total_spent DESC " +
+                "LIMIT 15";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, categoryLimit);
-            pstmt.setInt(2, customerLimitPerCategory);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    Map<String, Object> row = new HashMap<>();
-                    row.put("category_name", rs.getString("category_name"));
-                    row.put("customer_name", rs.getString("customer_name"));
-                    row.put("amount_spent_in_category", rs.getBigDecimal("amount_spent_in_category"));
-                    results.add(row);
-                }
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("category_name", rs.getString("category_name"));
+                row.put("customer_name", rs.getString("customer_name")); 
+                row.put("amount_spent_in_category", rs.getBigDecimal("total_spent"));
+                results.add(row);
             }
         } catch (SQLException e) {
             System.err.println("Lỗi SQL khi lấy top khách hàng chi tiêu/top danh mục: " + e.getMessage());
@@ -521,6 +496,118 @@ public class CustomerDataStore {
             }
         } catch (SQLException e) {
             System.err.println("Lỗi SQL khi lấy khách hàng theo địa chỉ chứa chuỗi '" + addressPattern + "': " + e.getMessage());
+            throw e;
+        }
+        return customers;
+    }
+
+    // NQ21: Khách hàng có sinh nhật trong tháng hiện tại
+    public List<Customer> getCustomersWithBirthdayThisMonth() throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT customer_id, username, email, first_name, last_name, created_at, gender, address, date_of_birth, phone " +
+                "FROM CUSTOMERS " +
+                "WHERE EXTRACT(MONTH FROM date_of_birth) = EXTRACT(MONTH FROM CURRENT_DATE) " +
+                "ORDER BY date_of_birth ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                customers.add(mapRowToCustomer(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng có sinh nhật trong tháng hiện tại: " + e.getMessage());
+            throw e;
+        }
+        return customers;
+    }
+
+    // NQ25: Khách hàng mua sản phẩm từ ít nhất 3 thương hiệu khác nhau
+    public List<Map<String, Object>> getCustomersWithMinBrandsPurchased(int minBrands, int limit) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT c.customer_id, c.first_name, c.last_name, COUNT(DISTINCT p.brand) AS brand_count " +
+                "FROM CUSTOMERS c " +
+                "JOIN ORDERS o ON c.customer_id = o.customer_id " +
+                "JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
+                "JOIN PRODUCTS p ON od.product_id = p.product_id " +
+                "GROUP BY c.customer_id, c.first_name, c.last_name " +
+                "HAVING COUNT(DISTINCT p.brand) >= ? " +
+                "ORDER BY brand_count DESC " +
+                "LIMIT ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, minBrands);
+            pstmt.setInt(2, limit);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("customer_id", rs.getInt("customer_id"));
+                    row.put("first_name", rs.getString("first_name"));
+                    row.put("last_name", rs.getString("last_name"));
+                    row.put("brand_count", rs.getInt("brand_count"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng mua từ ít nhất " + minBrands + " thương hiệu: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ28: Top 3 khách hàng có tổng số tiền chi cao nhất
+    public List<Map<String, Object>> getTopCustomersByTotalSpent(int topN) throws SQLException {
+        List<Map<String, Object>> results = new ArrayList<>();
+        String sql = "SELECT c.customer_id, c.first_name, c.last_name, SUM(o.total_amount) AS total_spent " +
+                "FROM CUSTOMERS c " +
+                "JOIN ORDERS o ON c.customer_id = o.customer_id " +
+                "GROUP BY c.customer_id, c.first_name, c.last_name " +
+                "ORDER BY total_spent DESC " +
+                "LIMIT ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, topN);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("customer_id", rs.getInt("customer_id"));
+                    row.put("first_name", rs.getString("first_name"));
+                    row.put("last_name", rs.getString("last_name"));
+                    row.put("total_spent", rs.getBigDecimal("total_spent"));
+                    results.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy top " + topN + " khách hàng chi tiêu cao nhất: " + e.getMessage());
+            throw e;
+        }
+        return results;
+    }
+
+    // NQ30: Khách hàng chưa mua sản phẩm thuộc danh mục 'Office'
+    public List<Customer> getCustomersNotPurchasingCategory(String categoryName) throws SQLException {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT c.customer_id, c.username, c.email, c.first_name, c.last_name, c.created_at, c.gender, c.address, c.date_of_birth, c.phone " +
+                "FROM CUSTOMERS c " +
+                "WHERE NOT EXISTS (" +
+                "    SELECT 1 " +
+                "    FROM ORDERS o " +
+                "    JOIN ORDER_DETAILS od ON o.order_id = od.order_id " +
+                "    JOIN PRODUCTS p ON od.product_id = p.product_id " +
+                "    JOIN CATEGORIES cat ON p.category_id = cat.category_id " +
+                "    WHERE o.customer_id = c.customer_id " +
+                "    AND cat.category_name = ?" +
+                ") " +
+                "ORDER BY c.customer_id";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, categoryName);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    customers.add(mapRowToCustomer(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi SQL khi lấy khách hàng chưa mua sản phẩm từ danh mục '" + categoryName + "': " + e.getMessage());
             throw e;
         }
         return customers;
