@@ -114,8 +114,6 @@ CREATE INDEX IF NOT EXISTS idx_orders_payment_id ON ORDERS(payment_id);
 CREATE INDEX IF NOT EXISTS idx_order_details_order_id ON ORDER_DETAILS(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_details_product_id ON ORDER_DETAILS(product_id);
 CREATE INDEX IF NOT EXISTS idx_payments_employee_id ON PAYMENTS(employee_id);
-CREATE INDEX IF NOT EXISTS idx_employees_email ON EMPLOYEES(email);
-CREATE INDEX IF NOT EXISTS idx_customers_email ON CUSTOMERS(email);
 CREATE INDEX IF NOT EXISTS idx_customers_username ON CUSTOMERS(username);
 
 INSERT INTO categories (category_name, description) VALUES
