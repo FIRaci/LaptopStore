@@ -109,7 +109,6 @@ CREATE TABLE ORDER_DETAILS (
 );
 
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON PRODUCTS(category_id);
-CREATE INDEX IF NOT EXISTS idx_products_product_type ON PRODUCTS(product_type);
 CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON ORDERS(customer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_payment_id ON ORDERS(payment_id);
 CREATE INDEX IF NOT EXISTS idx_order_details_order_id ON ORDER_DETAILS(order_id);

@@ -231,6 +231,7 @@ public class EmployeeDataStore {
                 "    WHERE pr.product_name = ? " +
                 "    AND EXTRACT(MONTH FROM o.order_date) = ? " +
                 "    AND EXTRACT(YEAR FROM o.order_date) = ? " +
+                "    AND o.payment_id IS NOT NULL " +
                 ")";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {

@@ -181,6 +181,7 @@ WHERE e.employee_id NOT IN (
     WHERE pr.product_name = 'Apple iMac 24 M3'
     AND EXTRACT(MONTH FROM o.order_date) = 4
     AND EXTRACT(YEAR FROM o.order_date) = 2024
+    AND o.payment_id IS NOT NULL
 );
 
 -- NQ8: Top 10 nhân viên hiệu suất cao
