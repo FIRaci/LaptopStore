@@ -72,10 +72,10 @@ LEFT JOIN CATEGORIES c ON p.category_id = c.category_id
 WHERE p.price BETWEEN 500 AND 1000
 ORDER BY p.price ASC;
 
-NQ20: Tổng doanh thu trong 2 năm qua
+NQ20: Tổng doanh thu trong 4 năm qua
 SELECT EXTRACT(YEAR FROM order_date) AS sales_year, SUM(total_amount) AS yearly_revenue
 FROM ORDERS
-WHERE order_date >= date_trunc('year', CURRENT_DATE - CAST((2 - 1 || ' years') AS INTERVAL))
+WHERE order_date >= date_trunc('year', CURRENT_DATE - CAST((4 - 1 || ' years') AS INTERVAL))
   AND order_date < date_trunc('year', CURRENT_DATE + INTERVAL '1 year')
 GROUP BY EXTRACT(YEAR FROM order_date)
 ORDER BY sales_year DESC;

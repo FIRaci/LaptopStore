@@ -109,15 +109,14 @@ CREATE TABLE ORDER_DETAILS (
 );
 
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON PRODUCTS(category_id);
-CREATE INDEX IF NOT EXISTS idx_products_product_type ON PRODUCTS(product_type);
 CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON ORDERS(customer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_payment_id ON ORDERS(payment_id);
 CREATE INDEX IF NOT EXISTS idx_order_details_order_id ON ORDER_DETAILS(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_details_product_id ON ORDER_DETAILS(product_id);
 CREATE INDEX IF NOT EXISTS idx_payments_employee_id ON PAYMENTS(employee_id);
-CREATE INDEX IF NOT EXISTS idx_employees_email ON EMPLOYEES(email);
-CREATE INDEX IF NOT EXISTS idx_customers_email ON CUSTOMERS(email);
 CREATE INDEX IF NOT EXISTS idx_customers_username ON CUSTOMERS(username);
+CREATE INDEX idx_customers_date_of_birth ON CUSTOMERS(date_of_birth);
+CREATE INDEX idx_orders_date_customer_total ON ORDERS(order_date, customer_id, total_amount);
 
 INSERT INTO categories (category_name, description) VALUES
 -- Laptop Categories (1-5)
