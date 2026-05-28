@@ -53,7 +53,7 @@ function renderTable() {
         <td>${p.sku}</td>
         <td>${p.name}</td>
         <td>${p.type}</td>
-        <td>$${p.price.toFixed(2)}</td>
+        <td>$${Number(p.price).toFixed(2)}</td>
         <td>${p.stock}</td>
         <td>
           <button class="btn btn-ghost edit-btn" data-id="${p.id}" style="padding:4px 8px;">Edit</button>
