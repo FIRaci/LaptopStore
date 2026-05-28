@@ -381,15 +381,18 @@ function openProductModal(id) {
         <p>${product.description || 'No detailed description available.'}</p>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-primary" id="modalAddBtn">Add to Cart</button>
+        ${currentUser?.role === 'ADMIN' ? '' : '<button class="btn btn-primary" id="modalAddBtn">Add to Cart</button>'}
       </div>
     </div>
   `;
   
-  document.getElementById("modalAddBtn").addEventListener("click", () => {
-    addToCart(product.id);
-    closeProductModal();
-  });
+  const modalAddBtn = document.getElementById("modalAddBtn");
+  if (modalAddBtn) {
+    modalAddBtn.addEventListener("click", () => {
+      addToCart(product.id);
+      closeProductModal();
+    });
+  }
   
   productModal.classList.add("open");
 }
