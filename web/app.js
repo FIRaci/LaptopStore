@@ -432,6 +432,35 @@ const adminBtn = document.getElementById("adminBtn");
 const adminModal = document.getElementById("adminModal");
 const adminModalClose = document.getElementById("adminModalClose");
 const adminProductForm = document.getElementById("adminProductForm");
+const userProfileModal = document.getElementById("userProfileModal");
+const userModalClose = document.getElementById("userModalClose");
+const userProfileForm = document.getElementById("userProfileForm");
+const logoutBtn = document.getElementById("logoutBtn");
+
+// UI Tabs logic
+document.querySelectorAll(".tabs").forEach(tabContainer => {
+  const buttons = tabContainer.querySelectorAll(".tab-btn");
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      // Deactivate all inside this tab container
+      buttons.forEach(b => b.classList.remove("active"));
+      // Hide all contents in the parent
+      const parent = tabContainer.parentElement;
+      parent.querySelectorAll(".tab-content").forEach(content => {
+        content.classList.remove("active");
+        content.style.display = "none";
+      });
+      // Activate clicked
+      btn.classList.add("active");
+      const targetId = btn.getAttribute("data-target");
+      const target = document.getElementById(targetId);
+      if (target) {
+        target.classList.add("active");
+        target.style.display = "block";
+      }
+    });
+  });
+});
 
 async function checkAuth() {
   const token = localStorage.getItem("auth_token");
@@ -469,11 +498,10 @@ function updateAuthUI() {
 if (accountBtn && authModal) {
   accountBtn.addEventListener("click", () => {
     if (currentUser) {
-      // Logout
-      currentUser = null;
-      localStorage.removeItem("auth_token");
-      updateAuthUI();
-      showToast("Logged out successfully");
+      // Open User Profile Modal
+      userProfileModal.classList.add("open");
+      loadUserProfile();
+      loadUserOrders();
     } else {
       authModal.classList.add("open");
     }
@@ -481,6 +509,23 @@ if (accountBtn && authModal) {
   authModalClose.addEventListener("click", () => authModal.classList.remove("open"));
   authModal.addEventListener("click", (e) => {
     if (e.target === authModal) authModal.classList.remove("open");
+  });
+}
+
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", () => {
+    currentUser = null;
+    localStorage.removeItem("auth_token");
+    updateAuthUI();
+    userProfileModal.classList.remove("open");
+    showToast("Logged out successfully");
+  });
+}
+
+if (userModalClose) {
+  userModalClose.addEventListener("click", () => userProfileModal.classList.remove("open"));
+  userProfileModal.addEventListener("click", (e) => {
+    if (e.target === userProfileModal) userProfileModal.classList.remove("open");
   });
 }
 
@@ -546,11 +591,191 @@ if (authForm) {
 }
 
 if (adminBtn && adminModal) {
-  adminBtn.addEventListener("click", () => adminModal.classList.add("open"));
+  adminBtn.addEventListener("click", () => {
+    adminModal.classList.add("open");
+    loadAdminData();
+  });
   adminModalClose.addEventListener("click", () => adminModal.classList.remove("open"));
   adminModal.addEventListener("click", (e) => {
     if (e.target === adminModal) adminModal.classList.remove("open");
   });
+}
+
+// User Profile Actions
+async function loadUserProfile() {
+  document.getElementById("profileFirstName").value = currentUser.firstName || "";
+  document.getElementById("profileLastName").value = currentUser.lastName || "";
+  document.getElementById("profilePhone").value = currentUser.phone || "";
+  document.getElementById("profileAddress").value = currentUser.address || "";
+}
+
+if (userProfileForm) {
+  userProfileForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({
+          firstName: document.getElementById("profileFirstName").value,
+          lastName: document.getElementById("profileLastName").value,
+          phone: document.getElementById("profilePhone").value,
+          address: document.getElementById("profileAddress").value
+        })
+      });
+      if (!res.ok) throw new Error("Failed to update profile");
+      const data = await res.json();
+      currentUser = data.user;
+      updateAuthUI();
+      showToast("Profile updated!");
+    } catch (err) {
+      showToast(err.message);
+    }
+  });
+}
+
+async function loadUserOrders() {
+  const token = localStorage.getItem("auth_token");
+  if (!token) return;
+  try {
+    const res = await fetch("/api/orders/my-orders", {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const orders = await res.json();
+      const tbody = document.getElementById("userOrdersTable");
+      tbody.innerHTML = orders.map(o => `
+        <tr>
+          <td>#${o.id}</td>
+          <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+          <td>${o.status}</td>
+          <td>${currency.format(o.totalAmount)}</td>
+        </tr>
+      `).join("");
+    }
+  } catch(e) {}
+}
+
+// Admin Panel Data Loading
+async function loadAdminData() {
+  const token = localStorage.getItem("auth_token");
+  if (!token) return;
+  
+  // Products
+  const tbodyProducts = document.getElementById("adminProductsTable");
+  tbodyProducts.innerHTML = state.products.map(p => `
+    <tr>
+      <td>${p.sku}</td>
+      <td>${p.name}</td>
+      <td>${currency.format(p.price)}</td>
+      <td>${p.stock}</td>
+      <td>
+        <button class="btn btn-ghost edit-product-btn" data-id="${p.id}" style="padding:4px 8px; font-size:0.8rem;">Edit</button>
+        <button class="btn btn-ghost delete-product-btn" data-id="${p.id}" style="padding:4px 8px; font-size:0.8rem; color:#ff4d4f;">Del</button>
+      </td>
+    </tr>
+  `).join("");
+  
+  // Bind Edit/Del
+  document.querySelectorAll(".edit-product-btn").forEach(btn => {
+    btn.addEventListener("click", () => editProduct(Number(btn.dataset.id)));
+  });
+  document.querySelectorAll(".delete-product-btn").forEach(btn => {
+    btn.addEventListener("click", () => deleteProduct(Number(btn.dataset.id)));
+  });
+
+  // Orders
+  try {
+    const resOrders = await fetch("/api/orders", { headers: { "Authorization": `Bearer ${token}` } });
+    if (resOrders.ok) {
+      const orders = await resOrders.json();
+      const tbodyOrders = document.getElementById("adminOrdersTable");
+      tbodyOrders.innerHTML = orders.map(o => `
+        <tr>
+          <td>#${o.id}</td>
+          <td>${o.user.email}</td>
+          <td>${currency.format(o.totalAmount)}</td>
+          <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+          <td>
+            <select class="order-status-select" data-id="${o.id}">
+              <option value="PENDING" ${o.status==='PENDING'?'selected':''}>PENDING</option>
+              <option value="SHIPPED" ${o.status==='SHIPPED'?'selected':''}>SHIPPED</option>
+              <option value="DELIVERED" ${o.status==='DELIVERED'?'selected':''}>DELIVERED</option>
+              <option value="CANCELLED" ${o.status==='CANCELLED'?'selected':''}>CANCELLED</option>
+            </select>
+          </td>
+          <td>
+            <button class="btn btn-ghost update-order-btn" data-id="${o.id}" style="padding:4px 8px; font-size:0.8rem;">Update</button>
+          </td>
+        </tr>
+      `).join("");
+      
+      document.querySelectorAll(".update-order-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const select = document.querySelector(`.order-status-select[data-id="${btn.dataset.id}"]`);
+          const newStatus = select.value;
+          try {
+            await fetch(`/api/orders/${btn.dataset.id}/status`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+              body: JSON.stringify({ status: newStatus })
+            });
+            showToast(`Order #${btn.dataset.id} status updated to ${newStatus}`);
+            loadAdminData(); // refresh revenue
+          } catch(e) {
+             showToast("Update failed");
+          }
+        });
+      });
+      
+      // Revenue
+      const paidOrders = orders.filter(o => o.status !== "CANCELLED");
+      document.getElementById("revTotalOrders").textContent = orders.length;
+      document.getElementById("revTotalAmount").textContent = currency.format(paidOrders.reduce((sum, o) => sum + o.totalAmount, 0));
+    }
+  } catch(e) { console.error(e) }
+}
+
+function editProduct(id) {
+  const p = state.products.find(x => x.id === id);
+  if(!p) return;
+  document.getElementById("adminProductId").value = p.id;
+  document.getElementById("adminName").value = p.name;
+  document.getElementById("adminSku").value = p.sku;
+  document.getElementById("adminBrand").value = p.brand;
+  document.getElementById("adminType").value = p.type;
+  document.getElementById("adminPrice").value = p.price;
+  document.getElementById("adminStock").value = p.stock;
+  document.getElementById("adminDesc").value = p.description || "";
+  document.getElementById("adminImage").value = p.imageUrl || "";
+  
+  document.getElementById("adminProductSubmit").textContent = "Update Product";
+  document.getElementById("adminProductCancel").style.display = "inline-flex";
+}
+
+document.getElementById("adminProductCancel")?.addEventListener("click", () => {
+  adminProductForm.reset();
+  document.getElementById("adminProductId").value = "";
+  document.getElementById("adminProductSubmit").textContent = "Save Product";
+  document.getElementById("adminProductCancel").style.display = "none";
+});
+
+async function deleteProduct(id) {
+  if(!confirm("Are you sure?")) return;
+  const token = localStorage.getItem("auth_token");
+  try {
+    const res = await fetch(`/api/products/${id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    if(res.ok) {
+      showToast("Product deleted");
+      await loadProducts();
+      loadAdminData();
+    }
+  } catch(e) { showToast("Failed to delete product"); }
 }
 
 if (adminProductForm) {
@@ -570,9 +795,13 @@ if (adminProductForm) {
       imageUrl: document.getElementById("adminImage").value
     };
 
+    const id = document.getElementById("adminProductId").value;
+    const method = id ? "PUT" : "POST";
+    const url = id ? `/api/products/${id}` : "/api/products";
+
     try {
-      const res = await fetch("/api/products", {
-        method: "POST",
+      const res = await fetch(url, {
+        method: method,
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -581,12 +810,12 @@ if (adminProductForm) {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to add product");
+        throw new Error(err.error || "Failed to save product");
       }
-      showToast("Product added successfully!");
-      adminProductForm.reset();
-      adminModal.classList.remove("open");
-      loadProducts();
+      showToast(id ? "Product updated!" : "Product added!");
+      document.getElementById("adminProductCancel").click(); // reset form
+      await loadProducts();
+      loadAdminData();
     } catch (error) {
       showToast(error.message);
     }

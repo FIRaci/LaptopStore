@@ -2,6 +2,8 @@ const express = require("express");
 const { z } = require("zod");
 const prisma = require("../db/prisma");
 
+const { verifyToken, isAdmin } = require("../middleware/auth");
+
 const router = express.Router();
 
 const orderSchema = z.object({
@@ -98,6 +100,26 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+router.get("/my-orders", verifyToken, async (req, res, next) => {
+  try {
+    const orders = await prisma.order.findMany({
+      where: { userId: req.user.id },
+      include: {
+        orderItems: {
+          include: {
+            product: true
+          }
+        },
+        payment: true
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(orders);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/:id", async (req, res, next) => {
   try {
     const id = Number(req.params.id);
@@ -124,7 +146,7 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
-router.get("/", async (req, res, next) => {
+router.get("/", verifyToken, isAdmin, async (req, res, next) => {
   try {
     const orders = await prisma.order.findMany({
       include: {
@@ -140,7 +162,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.put("/:id/status", async (req, res, next) => {
+router.put("/:id/status", verifyToken, isAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid order id" });

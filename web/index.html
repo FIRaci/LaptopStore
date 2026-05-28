@@ -197,54 +197,181 @@
 
     <!-- Admin Panel Modal -->
     <div id="adminModal" class="modal-overlay">
-      <div class="modal-content" style="max-width: 600px; padding: 32px;">
+      <div class="modal-content" style="max-width: 800px; padding: 32px; max-height: 90vh; overflow-y: auto;">
         <button id="adminModalClose" class="modal-close" aria-label="Close modal">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
         <h2 style="margin-bottom: 24px;">Admin Dashboard</h2>
-        <form id="adminProductForm" class="auth-form">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="input-group">
-              <label>Name</label>
-              <input type="text" id="adminName" required />
+        
+        <div class="tabs">
+          <button class="tab-btn active" data-target="adminProducts">Products</button>
+          <button class="tab-btn" data-target="adminOrders">Orders</button>
+          <button class="tab-btn" data-target="adminRevenue">Revenue</button>
+        </div>
+
+        <div id="adminProducts" class="tab-content active">
+          <h3>Manage Products</h3>
+          <form id="adminProductForm" class="auth-form" style="margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border);">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <input type="hidden" id="adminProductId" />
+              <div class="input-group">
+                <label>Name</label>
+                <input type="text" id="adminName" required />
+              </div>
+              <div class="input-group">
+                <label>SKU</label>
+                <input type="text" id="adminSku" required />
+              </div>
+              <div class="input-group">
+                <label>Brand</label>
+                <input type="text" id="adminBrand" required />
+              </div>
+              <div class="input-group">
+                <label>Type</label>
+                <select id="adminType" required style="background: var(--bg-base); border: 1px solid var(--border); color: var(--text-main); padding: 12px 16px; border-radius: 8px; font-family: inherit;">
+                  <option value="LAPTOP">LAPTOP</option>
+                  <option value="GEAR">GEAR</option>
+                  <option value="COMPONENT">COMPONENT</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Price</label>
+                <input type="number" id="adminPrice" required min="0" step="0.01" />
+              </div>
+              <div class="input-group">
+                <label>Stock</label>
+                <input type="number" id="adminStock" required min="0" />
+              </div>
             </div>
             <div class="input-group">
-              <label>SKU</label>
-              <input type="text" id="adminSku" required />
+              <label>Description</label>
+              <input type="text" id="adminDesc" />
             </div>
             <div class="input-group">
-              <label>Brand</label>
-              <input type="text" id="adminBrand" required />
+              <label>Image URL</label>
+              <input type="text" id="adminImage" value="/images/creator_laptop.png" />
             </div>
-            <div class="input-group">
-              <label>Type</label>
-              <select id="adminType" required style="background: var(--bg-base); border: 1px solid var(--border); color: var(--text-main); padding: 12px 16px; border-radius: 8px; font-family: inherit;">
-                <option value="LAPTOP">LAPTOP</option>
-                <option value="GEAR">GEAR</option>
-                <option value="COMPONENT">COMPONENT</option>
-              </select>
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+              <button class="btn btn-primary" type="submit" id="adminProductSubmit">Save Product</button>
+              <button class="btn btn-ghost" type="button" id="adminProductCancel" style="display: none;">Cancel Edit</button>
             </div>
-            <div class="input-group">
-              <label>Price</label>
-              <input type="number" id="adminPrice" required min="0" step="0.01" />
+          </form>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Name</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminProductsTable">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="adminOrders" class="tab-content" style="display: none;">
+          <h3>Manage Orders</h3>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Customer</th>
+                  <th>Total</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminOrdersTable">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="adminRevenue" class="tab-content" style="display: none;">
+          <h3>Revenue Dashboard</h3>
+          <div class="stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+            <div class="stat-card" style="background: var(--bg-surface); padding: 24px; border-radius: 12px; border: 1px solid var(--border);">
+              <h4 style="color: var(--text-muted); margin: 0 0 8px 0; font-size: 0.9rem;">Total Orders</h4>
+              <div id="revTotalOrders" style="font-size: 2rem; font-weight: 700; color: var(--primary);">0</div>
             </div>
-            <div class="input-group">
-              <label>Stock</label>
-              <input type="number" id="adminStock" required min="0" />
+            <div class="stat-card" style="background: var(--bg-surface); padding: 24px; border-radius: 12px; border: 1px solid var(--border);">
+              <h4 style="color: var(--text-muted); margin: 0 0 8px 0; font-size: 0.9rem;">Total Revenue (Paid/Delivered)</h4>
+              <div id="revTotalAmount" style="font-size: 2rem; font-weight: 700; color: var(--primary);">$0.00</div>
             </div>
           </div>
-          <div class="input-group">
-            <label>Description</label>
-            <input type="text" id="adminDesc" />
+        </div>
+      </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div id="userProfileModal" class="modal-overlay">
+      <div class="modal-content" style="max-width: 600px; padding: 32px; max-height: 90vh; overflow-y: auto;">
+        <button id="userModalClose" class="modal-close" aria-label="Close modal">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <h2 style="margin-bottom: 24px;">My Account</h2>
+        
+        <div class="tabs">
+          <button class="tab-btn active" data-target="userProfileTab">Profile</button>
+          <button class="tab-btn" data-target="userOrdersTab">Order History</button>
+        </div>
+
+        <div id="userProfileTab" class="tab-content active">
+          <form id="userProfileForm" class="auth-form">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="input-group">
+                <label>First Name</label>
+                <input type="text" id="profileFirstName" required />
+              </div>
+              <div class="input-group">
+                <label>Last Name</label>
+                <input type="text" id="profileLastName" required />
+              </div>
+            </div>
+            <div class="input-group">
+              <label>Phone Number</label>
+              <input type="text" id="profilePhone" />
+            </div>
+            <div class="input-group">
+              <label>Shipping Address</label>
+              <input type="text" id="profileAddress" />
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+              <button class="btn btn-primary" type="submit">Update Profile</button>
+              <button class="btn btn-ghost" type="button" id="logoutBtn">Sign Out</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="userOrdersTab" class="tab-content" style="display: none;">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="userOrdersTable">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
           </div>
-          <div class="input-group">
-            <label>Image URL</label>
-            <input type="text" id="adminImage" value="/images/creator_laptop.png" />
-          </div>
-          <button class="btn btn-primary auth-submit" type="submit">Add Product</button>
-        </form>
+        </div>
       </div>
     </div>
 

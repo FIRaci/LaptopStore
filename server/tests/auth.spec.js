@@ -51,6 +51,6 @@ test.describe("Authentication & Admin Flow", () => {
     await page.click("#adminProductForm button[type='submit']");
 
     // Modal should close (or toast appears)
-    await expect(page.locator(".toast").filter({ hasText: "Product added successfully" })).toBeVisible();
+    await expect(page.locator(".toast").filter({ hasText: "Product added!" })).toBeVisible();
   });
 });

@@ -78,8 +78,44 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
-router.get("/me", verifyToken, (req, res) => {
-  res.json({ user: req.user });
+router.get("/me", verifyToken, async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true, email: true, firstName: true, lastName: true,
+        phone: true, address: true, gender: true, dateOfBirth: true, role: true
+      }
+    });
+    res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const updateProfileSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  gender: z.string().optional()
+});
+
+router.put("/me", verifyToken, async (req, res, next) => {
+  try {
+    const data = updateProfileSchema.parse(req.body);
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data,
+      select: {
+        id: true, email: true, firstName: true, lastName: true,
+        phone: true, address: true, gender: true, dateOfBirth: true, role: true
+      }
+    });
+    res.json({ user });
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;
