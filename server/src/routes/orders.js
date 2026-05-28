@@ -40,6 +40,13 @@ router.post("/", async (req, res, next) => {
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
+    for (const item of payload.items) {
+      const product = productMap.get(item.productId);
+      if (product.stock < item.quantity) {
+        return res.status(409).json({ error: `Insufficient stock for product: ${product.name}` });
+      }
+    }
+
     const order = await prisma.$transaction(async (tx) => {
       const customer = await tx.user.upsert({
         where: { email: payload.customer.email },
@@ -51,7 +58,7 @@ router.post("/", async (req, res, next) => {
         },
         create: {
           email: payload.customer.email,
-          password: "guest_password", // Guest checkout default
+          password: "guest_password",
           firstName: payload.customer.firstName,
           lastName: payload.customer.lastName,
           phone: payload.customer.phone || null,
@@ -69,7 +76,7 @@ router.post("/", async (req, res, next) => {
       });
 
       const netAmount = orderItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-      const tax = 0; // Simplified for this example
+      const tax = 0;
       const totalAmount = netAmount + tax;
 
       const created = await tx.order.create({
@@ -83,6 +90,13 @@ router.post("/", async (req, res, next) => {
           }
         }
       });
+
+      for (const item of payload.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } }
+        });
+      }
 
       return tx.order.findUnique({
         where: { id: created.id },

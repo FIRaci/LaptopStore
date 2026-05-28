@@ -31,7 +31,7 @@ function renderTable() {
           <option value="PENDING" ${o.status==='PENDING'?'selected':''}>PENDING</option>
           <option value="SHIPPED" ${o.status==='SHIPPED'?'selected':''}>SHIPPED</option>
           <option value="DELIVERED" ${o.status==='DELIVERED'?'selected':''}>DELIVERED</option>
-          <option value="CANCELLED" ${o.status==='CANCELLED'?'selected':''}>CANCELLED</option>
+          <option value="CANCELED" ${o.status==='CANCELED'?'selected':''}>CANCELED</option>
         </select>
       </td>
       <td>

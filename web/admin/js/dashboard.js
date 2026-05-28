@@ -14,7 +14,7 @@ async function loadDashboard() {
     if (resOrders.ok) {
       const orders = await resOrders.json();
       
-      const paidOrders = orders.filter(o => o.status !== "CANCELLED");
+      const paidOrders = orders.filter(o => o.status !== "CANCELED");
       document.getElementById("revTotalOrders").textContent = orders.length;
       document.getElementById("revTotalAmount").textContent = currency.format(paidOrders.reduce((sum, o) => sum + o.totalAmount, 0));
     }

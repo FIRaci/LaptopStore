@@ -1,6 +1,7 @@
 const express = require("express");
 const { z } = require("zod");
 const prisma = require("../db/prisma");
+const { verifyToken, isAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ const employeeSchema = z.object({
   hireDate: z.string().datetime().optional()
 });
 
-router.get("/", async (req, res, next) => {
+router.get("/", verifyToken, isAdmin, async (req, res, next) => {
   try {
     const employees = await prisma.employee.findMany();
     res.json(employees);
@@ -23,7 +24,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.get("/:id", async (req, res, next) => {
+router.get("/:id", verifyToken, isAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid employee id" });
@@ -37,7 +38,7 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", verifyToken, isAdmin, async (req, res, next) => {
   try {
     const payload = employeeSchema.parse(req.body);
     const employee = await prisma.employee.create({
@@ -52,7 +53,7 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.put("/:id", async (req, res, next) => {
+router.put("/:id", verifyToken, isAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid employee id" });
@@ -71,7 +72,7 @@ router.put("/:id", async (req, res, next) => {
   }
 });
 
-router.delete("/:id", async (req, res, next) => {
+router.delete("/:id", verifyToken, isAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     if (Number.isNaN(id)) return res.status(400).json({ error: "Invalid employee id" });

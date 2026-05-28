@@ -1,6 +1,10 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "laptopstore_super_secret_key_2026";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("FATAL: JWT_SECRET environment variable is not set.");
+  process.exit(1);
+}
 
 function verifyToken(req, res, next) {
   const authHeader = req.headers.authorization;

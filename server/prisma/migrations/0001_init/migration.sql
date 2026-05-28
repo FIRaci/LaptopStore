@@ -4,24 +4,13 @@ CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'PAID', 'SHIPPED', 'DELIVERED', 'C
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'CANCELED', 'REFUNDED');
 CREATE TYPE "PaymentMethod" AS ENUM ('CASH', 'CARD', 'BANK_TRANSFER', 'COD');
 
--- Tables
-CREATE TABLE "Product" (
-  "id" SERIAL PRIMARY KEY,
-  "sku" TEXT NOT NULL UNIQUE,
-  "name" TEXT NOT NULL,
-  "brand" TEXT NOT NULL,
-  "description" TEXT,
-  "type" "ProductType" NOT NULL,
-  "price" NUMERIC(12,2) NOT NULL,
-  "stock" INTEGER NOT NULL,
-  "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
-  "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE "Customer" (
+-- User (replaces Customer — matches Prisma schema)
+CREATE TABLE "User" (
   "id" SERIAL PRIMARY KEY,
   "username" TEXT,
   "email" TEXT NOT NULL UNIQUE,
+  "password" TEXT NOT NULL,
+  "role" TEXT NOT NULL DEFAULT 'USER',
   "firstName" TEXT NOT NULL,
   "lastName" TEXT NOT NULL,
   "gender" TEXT,
@@ -42,9 +31,23 @@ CREATE TABLE "Employee" (
   "hireDate" TIMESTAMP
 );
 
+CREATE TABLE "Product" (
+  "id" SERIAL PRIMARY KEY,
+  "sku" TEXT NOT NULL UNIQUE,
+  "name" TEXT NOT NULL,
+  "brand" TEXT NOT NULL,
+  "description" TEXT,
+  "imageUrl" TEXT,
+  "type" "ProductType" NOT NULL,
+  "price" NUMERIC(12,2) NOT NULL,
+  "stock" INTEGER NOT NULL,
+  "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE "Order" (
   "id" SERIAL PRIMARY KEY,
-  "customerId" INTEGER NOT NULL REFERENCES "Customer"("id") ON DELETE RESTRICT,
+  "userId" INTEGER NOT NULL REFERENCES "User"("id") ON DELETE RESTRICT,
   "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
   "orderDate" TIMESTAMP NOT NULL DEFAULT NOW(),
   "netAmount" NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -75,7 +78,7 @@ CREATE TABLE "Payment" (
 -- Indexes
 CREATE INDEX "Product_type_idx" ON "Product"("type");
 CREATE INDEX "Product_brand_idx" ON "Product"("brand");
-CREATE INDEX "Order_customer_idx" ON "Order"("customerId");
+CREATE INDEX "Order_user_idx" ON "Order"("userId");
 CREATE INDEX "Order_status_idx" ON "Order"("status");
 CREATE INDEX "OrderItem_order_idx" ON "OrderItem"("orderId");
 CREATE INDEX "OrderItem_product_idx" ON "OrderItem"("productId");
