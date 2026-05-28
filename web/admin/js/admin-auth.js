@@ -23,7 +23,7 @@ async function initAdminAuth() {
     }
 
     document.getElementById("adminUserName").textContent = adminUser.name;
-    document.body.style.display = 'flex'; // show content if auth passes (hidden by default)
+    document.body.style.opacity = '1'; // smooth fade in
   } catch (error) {
     localStorage.removeItem("auth_token");
     window.location.href = "/";
@@ -31,8 +31,9 @@ async function initAdminAuth() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Hide body initially to prevent flash of content
-  document.body.style.display = 'none';
+  // Hide body initially to prevent flash of content, use transition for smoothness
+  document.body.style.transition = 'opacity 0.3s ease';
+  document.body.style.opacity = '0';
   initAdminAuth();
   
   document.getElementById("adminLogoutBtn")?.addEventListener("click", () => {
