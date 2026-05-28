@@ -37,18 +37,28 @@ test.describe("Authentication & Admin Flow", () => {
     const adminBtn = page.locator("#adminBtn");
     await expect(adminBtn).toBeVisible();
 
-    // Click Admin Button
+    // Click Admin Button (navigate to admin index)
     await adminBtn.click();
-    await expect(page.locator("#adminModal")).toHaveClass(/open/);
+    
+    // Wait for Admin Dashboard to load
+    await expect(page).toHaveURL(/.*\/admin\/index\.html/);
+
+    // Navigate to Products
+    await page.click("text=Products");
+    await expect(page).toHaveURL(/.*\/admin\/products\.html/);
+
+    // Click Add Product
+    await page.click("#addProductBtn");
+    await expect(page.locator("#addModal")).toHaveClass(/open/);
 
     // Fill new product form
-    await page.fill("#adminName", "Test Laptop X");
-    await page.fill("#adminSku", `TEST-X-${Date.now()}`);
-    await page.fill("#adminBrand", "TestBrand");
-    await page.selectOption("#adminType", "LAPTOP");
-    await page.fill("#adminPrice", "1299.99");
-    await page.fill("#adminStock", "10");
-    await page.click("#adminProductForm button[type='submit']");
+    await page.fill("#addName", "Test Laptop X");
+    await page.fill("#addSku", `TEST-X-${Date.now()}`);
+    await page.fill("#addBrand", "TestBrand");
+    await page.selectOption("#addType", "LAPTOP");
+    await page.fill("#addPrice", "1299.99");
+    await page.fill("#addStock", "10");
+    await page.click("#addForm button[type='submit']");
 
     // Modal should close (or toast appears)
     await expect(page.locator(".toast").filter({ hasText: "Product added!" })).toBeVisible();

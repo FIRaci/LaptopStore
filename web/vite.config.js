@@ -9,5 +9,15 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        adminDashboard: './admin/index.html',
+        adminProducts: './admin/products.html',
+        adminOrders: './admin/orders.html'
+      }
+    }
   }
 });

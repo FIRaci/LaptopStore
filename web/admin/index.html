@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard | LaptopStore</title>
+    <link rel="stylesheet" href="./admin.css" />
+  </head>
+  <body>
+    <aside class="admin-sidebar">
+      <div class="admin-brand">
+        <div class="brand">
+          <span class="brand-mark">LS</span>
+          <div class="brand-title">Admin</div>
+        </div>
+      </div>
+      <nav class="admin-nav">
+        <a href="/admin/index.html" class="admin-nav-item active">Dashboard</a>
+        <a href="/admin/products.html" class="admin-nav-item">Products</a>
+        <a href="/admin/orders.html" class="admin-nav-item">Orders</a>
+      </nav>
+      <div style="margin-top: auto; padding: 0 16px;">
+        <div style="margin-bottom: 8px; color: var(--text-muted); font-size: 0.9rem;" id="adminUserName"></div>
+        <a href="/" class="admin-nav-item">Back to Store</a>
+        <button id="adminLogoutBtn" class="btn btn-ghost" style="width: 100%; margin-top: 8px;">Logout</button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <h1>Overview</h1>
+      </header>
+      
+      <div class="admin-card">
+        <h2 style="margin-bottom: 16px;">Revenue & Stats</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <div style="background: var(--bg-base); padding: 24px; border-radius: 12px; border: 1px solid var(--border);">
+            <h4 style="color: var(--text-muted); margin: 0 0 8px 0; font-size: 0.9rem;">Total Orders</h4>
+            <div id="revTotalOrders" style="font-size: 2.5rem; font-weight: 700; color: var(--primary);">0</div>
+          </div>
+          <div style="background: var(--bg-base); padding: 24px; border-radius: 12px; border: 1px solid var(--border);">
+            <h4 style="color: var(--text-muted); margin: 0 0 8px 0; font-size: 0.9rem;">Total Revenue</h4>
+            <div id="revTotalAmount" style="font-size: 2.5rem; font-weight: 700; color: var(--accent);">$0.00</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script type="module" src="./js/dashboard.js"></script>
+  </body>
+</html>
