@@ -104,12 +104,14 @@ function renderProducts() {
             <p class="product-desc">${product.description || ""}</p>
             <div class="product-bottom">
               <div class="product-price">${currency.format(product.price)}</div>
+              ${currentUser?.role === 'ADMIN' ? '' : `
               <button class="btn btn-primary" data-id="${product.id}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
                 Add
               </button>
+              `}
             </div>
           </div>
         </div>
@@ -234,7 +236,9 @@ function renderCart() {
   });
 
   cartTotal.textContent = currency.format(total);
-  cartCount.textContent = state.cart.reduce((sum, item) => sum + item.quantity, 0);
+  const count = state.cart.reduce((sum, item) => sum + item.quantity, 0);
+  cartCount.textContent = count;
+  cartCount.style.display = count > 0 ? "inline-flex" : "none";
 }
 
 function openCart() {
@@ -483,13 +487,18 @@ function updateAuthUI() {
     accountBtnText.textContent = currentUser.name;
     if (currentUser.role === "ADMIN") {
       adminBtn.style.display = "inline-flex";
+      document.getElementById("cartToggle").style.display = "none";
     } else {
       adminBtn.style.display = "none";
+      document.getElementById("cartToggle").style.display = "inline-flex";
     }
   } else {
     accountBtnText.textContent = "Sign In";
     adminBtn.style.display = "none";
+    document.getElementById("cartToggle").style.display = "inline-flex";
   }
+  
+  if (state.filtered && state.filtered.length > 0) renderProducts();
 }
 
 if (accountBtn && authModal) {
