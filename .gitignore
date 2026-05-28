@@ -49,5 +49,22 @@ build/
 ### VS Code ###
 .vscode/
 
+### Node.js ###
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+### Environment files ###
+.env
+.env.*
+!.env.example
+
+### Prisma ###
+server/prisma/migrations/migration_lock.toml
+server/prisma/.cache/
+
 ### Mac OS ###
 .DS_Store

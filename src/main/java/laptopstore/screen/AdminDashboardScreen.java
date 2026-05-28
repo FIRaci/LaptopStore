@@ -321,7 +321,7 @@ public class AdminDashboardScreen {
 
             Product updatedProduct = new Product(selectedProduct.getProductId(), model, brand, description, BigDecimal.valueOf(price), stock, selectedProduct.getYearPublish());
             ProductDataStore.updateProduct(updatedProduct, type, typeName);
-            productTableModel.updateProduct(viewRow, updatedProduct);
+            productTableModel.updateProduct(modelRow, updatedProduct);
 
             resetProductForm();
             showAlert("Success", "Product updated successfully.", JOptionPane.INFORMATION_MESSAGE);
@@ -346,7 +346,7 @@ public class AdminDashboardScreen {
 
         if (confirmation == JOptionPane.YES_OPTION) {
             ProductDataStore.deleteProduct(productToDelete.getProductId());
-            productTableModel.removeProduct(viewRow);
+            productTableModel.removeProduct(modelRow);
             resetProductForm();
             showAlert("Success", "Product deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }
@@ -537,7 +537,7 @@ public class AdminDashboardScreen {
 
             Customer updatedCustomer = new Customer(selectedCustomer.getCustomerId(), username, email, firstName, lastName, selectedCustomer.getCreatedAt(), gender, address, dateOfBirth, phone);
             CustomerDataStore.updateCustomer(updatedCustomer);
-            customerTableModel.updateCustomer(viewRow, updatedCustomer);
+            customerTableModel.updateCustomer(modelRow, updatedCustomer);
 
             resetCustomerForm();
             showAlert("Success", "Customer updated successfully.", JOptionPane.INFORMATION_MESSAGE);
@@ -560,7 +560,7 @@ public class AdminDashboardScreen {
 
         if (confirmation == JOptionPane.YES_OPTION) {
             CustomerDataStore.deleteCustomer(customerToDelete.getCustomerId());
-            customerTableModel.removeCustomer(viewRow);
+            customerTableModel.removeCustomer(modelRow);
             resetCustomerForm();
             showAlert("Success", "Customer deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }
@@ -735,7 +735,7 @@ public class AdminDashboardScreen {
             showAlert("Error", "Please select an employee to update.", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        int modelRow = productTable.convertRowIndexToModel(viewRow);
+        int modelRow = employeeTable.convertRowIndexToModel(viewRow);
         Employee selectedEmployee = employeeTableModel.getEmployeeAt(modelRow);
 
         try {
@@ -760,7 +760,7 @@ public class AdminDashboardScreen {
 
             Employee updatedEmployee = new Employee(selectedEmployee.getEmployeeId(), firstName, lastName, phone, address, gender, bankNumber, role, salary, workDay, hireDate);
             EmployeeDataStore.updateEmployee(updatedEmployee);
-            employeeTableModel.updateEmployee(viewRow, updatedEmployee);
+            employeeTableModel.updateEmployee(modelRow, updatedEmployee);
 
             resetEmployeeForm();
             showAlert("Success", "Employee updated successfully.", JOptionPane.INFORMATION_MESSAGE);
@@ -785,7 +785,7 @@ public class AdminDashboardScreen {
 
         if (confirmation == JOptionPane.YES_OPTION) {
             EmployeeDataStore.deleteEmployee(employeeToDelete.getEmployeeId());
-            employeeTableModel.removeEmployee(viewRow);
+            employeeTableModel.removeEmployee(modelRow);
             resetEmployeeForm();
             showAlert("Success", "Employee deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }
@@ -974,7 +974,7 @@ public class AdminDashboardScreen {
 
             Payment updatedPayment = new Payment(selectedPayment.getPaymentId(), selectedEmployee.getEmployeeId(), paymentDateTime, amount, method, status);
             PaymentDataStore.updatePayment(updatedPayment);
-            paymentTableModel.updatePayment(viewRow, updatedPayment);
+            paymentTableModel.updatePayment(modelRow, updatedPayment);
 
             resetPaymentForm();
             showAlert("Success", "Payment updated successfully.", JOptionPane.INFORMATION_MESSAGE);
@@ -999,7 +999,7 @@ public class AdminDashboardScreen {
 
         if (confirmation == JOptionPane.YES_OPTION) {
             PaymentDataStore.deletePayment(paymentToDelete.getPaymentId());
-            paymentTableModel.removePayment(viewRow);
+            paymentTableModel.removePayment(modelRow);
             resetPaymentForm();
             showAlert("Success", "Payment deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }
@@ -1345,8 +1345,11 @@ public class AdminDashboardScreen {
             OrderDataStore.updateOrder(updatedOrder); // DataStore cần logic để cập nhật hoặc thêm/xóa OrderItems
 
             // Cập nhật lại đối tượng trong TableModel và làm mới bảng
-            orderTableModel.updateOrder(viewRow, updatedOrder);
-            orderTable.setRowSelectionInterval(viewRow, viewRow); // Giữ lựa chọn
+            orderTableModel.updateOrder(modelRow, updatedOrder);
+            int updatedViewRow = orderTable.convertRowIndexToView(modelRow);
+            if (updatedViewRow != -1) {
+                orderTable.setRowSelectionInterval(updatedViewRow, updatedViewRow);
+            }
             orderItemTableModel.setItems(new ArrayList<>(updatedOrder.getOrderItems()));
 
 
@@ -1371,7 +1374,7 @@ public class AdminDashboardScreen {
 
         if (confirmation == JOptionPane.YES_OPTION) {
             OrderDataStore.deleteOrder(orderToDelete.getOrderId());
-            orderTableModel.removeOrder(viewRow);
+            orderTableModel.removeOrder(modelRow);
             resetOrderFormFieldsAndTempItems();
             showAlert("Success", "Order deleted successfully.", JOptionPane.INFORMATION_MESSAGE);
         }

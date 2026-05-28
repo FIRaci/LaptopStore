@@ -1,7 +1,6 @@
 package laptopstore.model;
 
-import laptopstore.LaptopStoreApplication;
-
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,17 +34,18 @@ public class Order {
     }
 
     public void calculateTotalAmount() {
-        netAmount = 0;
+        BigDecimal net = BigDecimal.ZERO;
         for (OrderItem item : orderItems) {
-            Product product = LaptopStoreApplication.products.stream()
-                    .filter(p -> p.getProductId() == item.getProductId())
-                    .findFirst().orElse(null);
-            if (product != null) {
-                netAmount += product.getPrice() * item.getQuantity();
-            }
+            BigDecimal unitPrice = BigDecimal.valueOf(item.getUnitPrice());
+            BigDecimal quantity = BigDecimal.valueOf(item.getQuantity());
+            net = net.add(unitPrice.multiply(quantity));
         }
-        tax = netAmount * 0.1; // Thuế 10%
-        totalAmount = netAmount + tax;
+        BigDecimal taxAmount = net.multiply(BigDecimal.valueOf(0.1)); // Thuế 10%
+        BigDecimal total = net.add(taxAmount);
+
+        netAmount = net.doubleValue();
+        tax = taxAmount.doubleValue();
+        totalAmount = total.doubleValue();
     }
 
     @Override
